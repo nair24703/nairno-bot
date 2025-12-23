@@ -1,0 +1,6 @@
+discord.py[voice]
+groq
+requests
+pydub
+flask
+PyNaCl
