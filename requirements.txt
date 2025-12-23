@@ -1,7 +1,0 @@
-discord.py
-groq
-pydub
-SpeechRecognition
-requests
-flask
-PyNaCl
