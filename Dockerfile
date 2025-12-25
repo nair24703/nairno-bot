@@ -15,10 +15,10 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and extract VOICEVOX Engine
-RUN curl -L -o voicevox_engine.zip "https://github.com/VOICEVOX/voicevox_engine/releases/download/${VOICEVOX_VERSION}/voicevox_engine-linux-x64-${VOICEVOX_VERSION}.zip" \
-    && unzip voicevox_engine.zip -d /opt \
+RUN curl -L -o voicevox_engine.tar.gz "https://github.com/VOICEVOX/voicevox_engine/releases/download/${VOICEVOX_VERSION}/voicevox_engine-linux-x64-${VOICEVOX_VERSION}.tar.gz" \
+    && tar -xzf voicevox_engine.tar.gz -C /opt \
     && mv /opt/voicevox_engine-linux-x64-${VOICEVOX_VERSION} ${VOICEVOX_ENGINE_DIR} \
-    && rm voicevox_engine.zip
+    && rm voicevox_engine.tar.gz
 
 # Install Python dependencies
 COPY requirements.txt .
