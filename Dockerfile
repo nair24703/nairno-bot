@@ -16,8 +16,9 @@ RUN apt-get update \
 
 # Download and extract VOICEVOX Engine
 RUN curl -L -o voicevox_engine.7z.001 "https://github.com/VOICEVOX/voicevox_engine/releases/download/${VOICEVOX_VERSION}/voicevox_engine-linux-cpu-x64-${VOICEVOX_VERSION}.7z.001" \
-    && 7z x voicevox_engine.7z.001 -o/opt \
-    && mv /opt/voicevox_engine-linux-cpu-x64-${VOICEVOX_VERSION} ${VOICEVOX_ENGINE_DIR} \
+    && 7z x voicevox_engine.7z.001 -o/tmp \
+    && mv $(find /tmp -maxdepth 1 -type d -name "voicevox_engine-linux-cpu-x64-*") ${VOICEVOX_ENGINE_DIR} \
+    && rm -rf /tmp/voicevox_temp \
     && rm voicevox_engine.7z.001
 
 # Install Python dependencies
