@@ -1,6 +1,6 @@
 FROM python:3.9-slim-bullseye
 
-ENV VOICEVOX_VERSION=0.14.1
+ENV VOICEVOX_VERSION=0.25.0
 ENV VOICEVOX_ENGINE_DIR=/opt/voicevox_engine
 
 WORKDIR /app
@@ -10,15 +10,15 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ffmpeg \
         curl \
-        unzip \
+        p7zip-full \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and extract VOICEVOX Engine
-RUN curl -L -o voicevox_engine.tar.gz "https://github.com/VOICEVOX/voicevox_engine/releases/download/${VOICEVOX_VERSION}/voicevox_engine-linux-x64-${VOICEVOX_VERSION}.tar.gz" \
-    && tar -xzf voicevox_engine.tar.gz -C /opt \
-    && mv /opt/voicevox_engine-linux-x64-${VOICEVOX_VERSION} ${VOICEVOX_ENGINE_DIR} \
-    && rm voicevox_engine.tar.gz
+RUN curl -L -o voicevox_engine.7z.001 "https://github.com/VOICEVOX/voicevox_engine/releases/download/${VOICEVOX_VERSION}/voicevox_engine-linux-cpu-x64-${VOICEVOX_VERSION}.7z.001" \
+    && 7z x voicevox_engine.7z.001 -o/opt \
+    && mv /opt/voicevox_engine-linux-cpu-x64-${VOICEVOX_VERSION} ${VOICEVOX_ENGINE_DIR} \
+    && rm voicevox_engine.7z.001
 
 # Install Python dependencies
 COPY requirements.txt .
