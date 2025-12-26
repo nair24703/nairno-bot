@@ -20,7 +20,8 @@ RUN apt-get update \
 # Download and extract VOICEVOX Engine (with retries and checks)
 RUN set -eux \
     && echo "Downloading VOICEVOX engine: ${VOICEVOX_VERSION}" \
-    && wget -q --show-progress -O voicevox_engine.7z.001 "https://github.com/VOICEVOX/voicevox_engine/releases/download/${VOICEVOX_VERSION}/voicevox_engine-linux-cpu-x64-${VOICEVOX_VERSION}.7z.001" || (echo "wget failed" && exit 1) \
+    && wget -v -O voicevox_engine.7z.001 "https://github.com/VOICEVOX/voicevox_engine/releases/download/${VOICEVOX_VERSION}/voicevox_engine-linux-cpu-x64-${VOICEVOX_VERSION}.7z.001" || (echo "wget download failed" && exit 1) \
+    && [ -s voicevox_engine.7z.001 ] || (echo "Downloaded file is empty or missing" && exit 1) \
     && echo "Downloaded file info:" && ls -lh voicevox_engine.7z.001 \
     && echo "File command output:" && file voicevox_engine.7z.001 || true \
     && echo "Trying to list archive contents (7z l)" && 7z l voicevox_engine.7z.001 || (echo "7z list failed" && ls -la . && exit 1) \
