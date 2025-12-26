@@ -20,7 +20,7 @@ RUN apt-get update \
 # Download and extract VOICEVOX Engine (with retries and checks)
 RUN set -eux \
     && echo "Downloading VOICEVOX engine: ${VOICEVOX_VERSION}" \
-    && curl -fSLo voicevox_engine.7z.001 --retry 3 --retry-delay 5 -D curl_headers.txt "https://github.com/VOICEVOX/voicevox_engine/releases/download/${VOICEVOX_VERSION}/voicevox_engine-linux-cpu-x64-${VOICEVOX_VERSION}.7z.001" || (echo "curl failed" && cat curl_headers.txt || true && exit 1) \
+    && wget -q --show-progress -O voicevox_engine.7z.001 "https://github.com/VOICEVOX/voicevox_engine/releases/download/${VOICEVOX_VERSION}/voicevox_engine-linux-cpu-x64-${VOICEVOX_VERSION}.7z.001" || (echo "wget failed" && exit 1) \
     && echo "Downloaded file info:" && ls -lh voicevox_engine.7z.001 \
     && echo "File command output:" && file voicevox_engine.7z.001 || true \
     && echo "Trying to list archive contents (7z l)" && 7z l voicevox_engine.7z.001 || (echo "7z list failed" && ls -la . && exit 1) \
@@ -31,7 +31,7 @@ RUN set -eux \
     && mkdir -p ${VOICEVOX_ENGINE_DIR} \
     && mv "$EXTRACTED_DIR" "${VOICEVOX_ENGINE_DIR}" \
     && rm -rf /tmp/*voicevox* \
-    && rm -f voicevox_engine.7z.001 curl_headers.txt
+    && rm -f voicevox_engine.7z.001
 
 # Install Python dependencies
 COPY requirements.txt .
