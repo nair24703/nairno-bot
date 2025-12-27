@@ -1,28 +1,29 @@
-# 1. VOICEVOX公式イメージをベースにする
+# 1. 公式イメージをベースにする
 FROM voicevox/voicevox_engine:cpu-ubuntu20.04-latest
 
 USER root
 
-# 2. Botに必要な最低限のツールだけ入れる
+# 2. 必要なツールを入れる
 RUN apt-get update && apt-get install -y python3-pip ffmpeg && apt-get clean
 
 WORKDIR /app
 
-# 3. Bot用（discord.pyなど）のライブラリだけ入れる
+# 3. Bot用のライブラリを入れる
 COPY requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt
 
 # 4. 全ファイルをコピー
 COPY . .
 
-# 5. 起動スクリプト（ここが重要だまる！）
+# 5. 起動スクリプト（ここを少しだけ書き換えたまる！）
 RUN echo '#!/bin/bash\n\
 echo "--- VOICEVOX ENGINE STARTING ---" \n\
 cd /opt/voicevox_engine \n\
 \n\
-# python3 run.py ではなく、公式が用意した実行ファイルを直接動かすまる！\n\
-# これなら uvicorn も pyopenjtalk も全部内蔵されているからエラーにならないだもん！\n\
-./voicevox_engine --host 0.0.0.0 --accept_all_terms & \n\
+# フォルダ名と衝突しないように python3 run.py で確実に動かすまる！ \n\
+# 公式環境のパスを全部通して ModuleNotFoundError を防ぐだもん \n\
+export PYTHONPATH=$PYTHONPATH:/opt/voicevox_engine \n\
+python3 run.py --host 0.0.0.0 --accept_all_terms & \n\
 \n\
 echo "--- waiting for 60 seconds ---" \n\
 sleep 60 \n\
