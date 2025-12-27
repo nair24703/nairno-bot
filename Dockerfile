@@ -3,10 +3,11 @@ FROM voicevox/voicevox_engine:cpu-ubuntu22.04-latest
 
 USER root
 
-# 2. ツールインストール
+# 2. 必要なツールをインストール
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
     ffmpeg \
+    libopus-dev \
     && pip3 install --no-cache-dir uvicorn fastapi "pydantic>=2.0" pydantic-settings typing-extensions \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
