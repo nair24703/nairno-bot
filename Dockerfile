@@ -19,11 +19,18 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# 4. 起動スクリプト（最もシンプルな正解に到達したまる！）
+# 4. 起動スクリプト（公式のデフォルト実行ファイルを自動で叩くまる！）
 RUN echo '#!/bin/bash\n\
 echo "--- STARTING VOICEVOX ENGINE ---" \n\
-# 公式イメージでパスが通っているはずの実行コマンドを直接叩くまる！ \n\
-voicevox_engine --host 0.0.0.0 --accept_all_terms & \n\
+# /opt/voicevox_engine の中にある「実行可能ファイル」を自動で探して動かすまる！ \n\
+TARGET=$(find /opt/voicevox_engine -maxdepth 1 -executable -type f | head -n 1) \n\
+if [ -n "$TARGET" ]; then \n\
+    echo "Executing engine at: $TARGET" \n\
+    "$TARGET" --host 0.0.0.0 --accept_all_terms & \n\
+else \n\
+    echo "Fallback: Trying python module mode..." \n\
+    python3 -m voicevox_engine --host 0.0.0.0 --accept_all_terms & \n\
+fi \n\
 \n\
 echo "--- waiting for 60 seconds ---" \n\
 sleep 60 \n\
