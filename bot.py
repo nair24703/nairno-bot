@@ -47,50 +47,39 @@ bot = MyBot()
 
 # --- 共通の対話ロジック ---
 async def process_voice_interaction(interaction: discord.Interaction, user_text: str):
-    # 1. Groq AIで返答生成（ここは動くはずだもん！）
     try:
-        chat_completion = client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": "あなたは満別花丸という名前の女の子です。明るく元気に、語尾に「～だもん」や「～まる」をつけて喋ってください。"},
-                {"role": "user", "content": user_text}
-            ],
-            model="llama-3.1-8b-instant",
-        )
-        response_text = chat_completion.choices[0].message.content
-    except Exception as e:
-        await interaction.followup.send("AIがお喋りをお休みしてるみたいだもん...。")
-        return
-
-    # 2. VOICEVOXでの音声合成に挑戦
-    voice_success = False
-    voice_client = interaction.guild.voice_client
-
-    if voice_client and voice_client.is_connected():
-        try:
-            # タイムアウトを短く設定して、ダメならすぐ諦めるまる
+            # 1. レシピ作成 (audio_query)
             params = {'text': response_text, 'speaker': HANAMARU_ID}
-            res1 = requests.post(f'{VOICEVOX_URL}/audio_query', params=params, timeout=3)
-            res2 = requests.post(f'{VOICEVOX_URL}/synthesis', params={'speaker': HANAMARU_ID}, json=res1.json(), timeout=10)
+            res1 = requests.post(f'{VOICEVOX_URL}/audio_query', params=params, timeout=5)
+            res1.raise_for_status() # エラーがあればここで例外を出すまる
+            query_data = res1.json()
+
+            # 2. 音声波形生成 (synthesis) - ここをより確実に！
+            res2 = requests.post(
+                f'{VOICEVOX_URL}/synthesis',
+                params={'speaker': HANAMARU_ID},
+                json=query_data, # res1.json()を直接入れるまる
+                timeout=30       # 合成は時間がかかるから長くするまる！
+            )
+            res2.raise_for_status()
             
+            # 3. 保存
             with open("response.wav", "wb") as f:
                 f.write(res2.content)
             
-            # "-vn"（映像なし）と、再接続に強い設定を追加するまる！
+            # 4. 再生（FFmpegの設定をより安全に）
             ffmpeg_options = {
-                'options': '-vn',
-                'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'
+                'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+                'options': '-vn'
             }
             voice_client.play(discord.FFmpegPCMAudio("response.wav", **ffmpeg_options))
             voice_success = True
-        except Exception as e:
-            print(f"Voice Synthesis Failed: {e}")
-            # ここでエラーになっても止まらず、下のテキスト送信に進むまる！
 
-    # 3. お返事
-    if voice_success:
-        await interaction.followup.send(f"**花丸**: {response_text}")
-    else:
-        await interaction.followup.send(f"（ごめんね、声が出ないから文字でお返事するまる！）\n**花丸**: {response_text}")
+        except Exception as e:
+            # どこで失敗したかログに出すようにするまる！
+            print(f"--- VOICE ERROR LOG ---")
+            print(f"Error Type: {type(e).__name__}")
+            print(f"Error Details: {e}")
 
 # --- スラッシュコマンド定義 ---
 
