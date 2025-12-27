@@ -3,7 +3,7 @@ FROM voicevox/voicevox_engine:cpu-ubuntu22.04-latest
 
 USER root
 
-# 2. 必要なツールをインストール
+# 2. ツールインストール
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
     ffmpeg \
@@ -19,18 +19,13 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# 4. 起動スクリプト（公式のデフォルト実行ファイルを自動で叩くまる！）
+# 4. 起動スクリプト（エラーの原因だったオプションを消したまる！）
 RUN echo '#!/bin/bash\n\
 echo "--- STARTING VOICEVOX ENGINE ---" \n\
-# /opt/voicevox_engine の中にある「実行可能ファイル」を自動で探して動かすまる！ \n\
-TARGET=$(find /opt/voicevox_engine -maxdepth 1 -executable -type f | head -n 1) \n\
-if [ -n "$TARGET" ]; then \n\
-    echo "Executing engine at: $TARGET" \n\
-    "$TARGET" --host 0.0.0.0 --accept_all_terms & \n\
-else \n\
-    echo "Fallback: Trying python module mode..." \n\
-    python3 -m voicevox_engine --host 0.0.0.0 --accept_all_terms & \n\
-fi \n\
+\n\
+# 突き止めたパスを直接叩くまる！ \n\
+# --accept_all_terms を消して起動するだもん \n\
+/opt/voicevox_engine/run --host 0.0.0.0 & \n\
 \n\
 echo "--- waiting for 60 seconds ---" \n\
 sleep 60 \n\
