@@ -6,27 +6,25 @@ FROM python:3.11-slim
 
 USER root
 
-# 3. 必要なOSの部品をインストール
-RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    libsndfile1 \
-    && apt-get clean
+# 3. 最小限必要なOSの部品だけ入れる
+RUN apt-get update && apt-get install -y ffmpeg libsndfile1 && apt-get clean
 
-# 4. 公式から「プログラムとライブラリが詰まったフォルダ」を丸ごとコピー
-# さっきエラーが出た site-packages のコピーはやめて、ここだけに集中するまる！
+# 4. 【ここが重要！】
+# 公式イメージがインストール済みの「ライブラリ全部」を、今の環境に無理やりねじ込むまる！
+# これで pyopenjtalk も uvicorn も最初から「ある」状態になるだもん！
+COPY --from=source /usr/local/lib/python3.8/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=source /opt/voicevox_engine /opt/voicevox_engine
 
 WORKDIR /app
 
-# 5. 私たちの Bot 用のライブラリをインストール
+# 5. あなたの Bot 用のライブラリだけを入れる
+# ここで pyopenjtalk をビルドさせないのが勝利の鍵だまる！
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
-# pyopenjtalk など、エンジンに必要なものを「今の環境」でも使えるように叩き込むまる
-# ビルド済みのバイナリが降ってくることを祈るまる！
-RUN pip install --no-cache-dir \
-    "uvicorn[standard]" fastapi "pydantic>=2.0" pydantic-settings soxr pyopenjtalk
+# もしこれでも足りないと言われた時のための保険だまる
+RUN pip install --no-cache-dir "pydantic>=2.0" pydantic-settings
 
 COPY . .
 
@@ -34,9 +32,8 @@ COPY . .
 RUN echo '#!/bin/bash\n\
 echo "--- VOICEVOX ENGINE STARTING ---" \n\
 cd /opt/voicevox_engine \n\
-\n\
-# エンジン内のライブラリ（もしあれば）と、今の環境のライブラリ両方を見るようにするまる\n\
-export PYTHONPATH=$PYTHONPATH:/opt/voicevox_engine:/opt/voicevox_engine/voicevox_engine \n\
+# 全てのパスを繋いで、3.8用のライブラリも 3.11 で無理やり読み込ませるまる！\n\
+export PYTHONPATH=$PYTHONPATH:/usr/local/lib/python3.11/site-packages:/opt/voicevox_engine \n\
 \n\
 python3 run.py --host 0.0.0.0 --accept_all_terms & \n\
 \n\
