@@ -15,22 +15,16 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 # 4. 全ファイルをコピー
 COPY . .
 
-# 5. 起動スクリプト（実行ファイルの場所を徹底的に指定したまる！）
+# 5. 起動スクリプト（run.py を直接 Python3 で動かすまる！）
 RUN echo '#!/bin/bash\n\
 echo "--- VOICEVOX ENGINE STARTING ---" \n\
-# 公式イメージの実行ファイルがある場所に移動するまる\n\
 cd /opt/voicevox_engine \n\
 \n\
-# 実行ファイル名は ./run か ./voicevox_engine のどちらかだまる\n\
-# 両方試して、ある方を起動するようにガードを固めたまる！\n\
-if [ -f "./run" ]; then\n\
-    ./run --host 0.0.0.0 --accept_all_terms &\n\
-elif [ -f "./voicevox_engine" ]; then\n\
-    ./voicevox_engine --host 0.0.0.0 --accept_all_terms &\n\
-else\n\
-    echo "Error: 実行ファイルが見つからないまる！パスを確認するだもん。"\n\
-    ls -F /opt/voicevox_engine/\n\
-fi\n\
+# PYTHONPATH を設定して、隣にある voicevox_engine フォルダを読み込めるようにするまる\n\
+export PYTHONPATH=$PYTHONPATH:/opt/voicevox_engine \n\
+\n\
+# run.py を起動！これが正解のファイルだもん！\n\
+python3 run.py --host 0.0.0.0 --accept_all_terms & \n\
 \n\
 echo "--- waiting for 60 seconds ---" \n\
 sleep 60 \n\
