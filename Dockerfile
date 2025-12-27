@@ -1,7 +1,7 @@
 # 1. まず公式イメージを素材として読み込む
 FROM voicevox/voicevox_engine:cpu-ubuntu20.04-latest AS source
 
-# 2. 安定した Python 3.11 環境を使うまる
+# 2. 安定した Python 3.11 環境を使う
 FROM python:3.11-slim
 
 USER root
@@ -14,17 +14,27 @@ COPY --from=source /opt/voicevox_engine /opt/voicevox_engine
 
 WORKDIR /app
 
-# 5. 【ここが解決の鍵！】
-# 依存関係を「ビルド」させないように、バイナリ配布（wheel）を優先して入れるまる！
+# 5. ライブラリのインストール
+# Pydantic を最新（v2）にすることで TypeAdapter のエラーを消すまる！
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir -r requirements.txt
 
-# soxr などの難しいライブラリを、ビルドツール不要の「バイナリ版」で指定して入れるまる
 RUN pip install --no-cache-dir \
-    "uvicorn[standard]" fastapi requests "numpy<2.0" "pydantic<2.0" \
-    jinja2 aiofiles python-multipart \
-    semver pyyaml platformdirs psutil "soxr"
+    "uvicorn[standard]" \
+    "fastapi" \
+    "requests" \
+    "numpy" \
+    "pydantic>=2.0" \
+    "pydantic-settings" \
+    "jinja2" \
+    "aiofiles" \
+    "python-multipart" \
+    "semver" \
+    "pyyaml" \
+    "platformdirs" \
+    "psutil" \
+    "soxr"
 
 COPY . .
 
@@ -34,7 +44,7 @@ echo "--- VOICEVOX ENGINE STARTING ---" \n\
 cd /opt/voicevox_engine \n\
 export PYTHONPATH=$PYTHONPATH:/opt/voicevox_engine \n\
 \n\
-# 私たちがライブラリを揃えた Python 3.11 で run.py を動かすまる！\n\
+# Python 3.11 で実行するまる！\n\
 python3 run.py --host 0.0.0.0 --accept_all_terms & \n\
 \n\
 echo "--- waiting for 60 seconds ---" \n\
