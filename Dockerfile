@@ -6,30 +6,27 @@ FROM python:3.11-slim
 
 USER root
 
-# 3. 必要なOSの部品（FFmpeg、OpenJTalkのコンパイルに必要なもの）をインストール
+# 3. 必要なOSの部品をインストール
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     libsndfile1 \
-    cmake \
-    g++ \
     && apt-get clean
 
-# 4. 【ここが魔法の1行だまる！】
-# 公式イメージの「ライブラリ置き場」から、pyopenjtalk を含む全ての部品をコピーするまる！
-COPY --from=source /usr/local/lib/python3.8/site-packages /usr/local/lib/python3.11/site-packages
-# プログラム本体もコピー
+# 4. 公式から「プログラムとライブラリが詰まったフォルダ」を丸ごとコピー
+# さっきエラーが出た site-packages のコピーはやめて、ここだけに集中するまる！
 COPY --from=source /opt/voicevox_engine /opt/voicevox_engine
 
 WORKDIR /app
 
-# 5. 私たちの Bot 用のライブラリだけを足すまる
+# 5. 私たちの Bot 用のライブラリをインストール
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
-# もし足りないものがあっても、ここで補完するまる
+# pyopenjtalk など、エンジンに必要なものを「今の環境」でも使えるように叩き込むまる
+# ビルド済みのバイナリが降ってくることを祈るまる！
 RUN pip install --no-cache-dir \
-    "uvicorn[standard]" fastapi "pydantic>=2.0" pydantic-settings soxr
+    "uvicorn[standard]" fastapi "pydantic>=2.0" pydantic-settings soxr pyopenjtalk
 
 COPY . .
 
@@ -38,8 +35,8 @@ RUN echo '#!/bin/bash\n\
 echo "--- VOICEVOX ENGINE STARTING ---" \n\
 cd /opt/voicevox_engine \n\
 \n\
-# 全てのパスを繋いで、どこからでも部品が見えるようにするまる！\n\
-export PYTHONPATH=$PYTHONPATH:/opt/voicevox_engine:/usr/local/lib/python3.11/site-packages \n\
+# エンジン内のライブラリ（もしあれば）と、今の環境のライブラリ両方を見るようにするまる\n\
+export PYTHONPATH=$PYTHONPATH:/opt/voicevox_engine:/opt/voicevox_engine/voicevox_engine \n\
 \n\
 python3 run.py --host 0.0.0.0 --accept_all_terms & \n\
 \n\
