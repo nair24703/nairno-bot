@@ -1,39 +1,29 @@
-# 1. 素材として公式イメージを読み込む
-FROM voicevox/voicevox_engine:cpu-ubuntu20.04-latest AS source
-
-# 2. ベースは Python 3.11
-FROM python:3.11-slim
+# 1. VOICEVOX公式イメージ（Python 3.8が入ってる）をベースにする
+FROM voicevox/voicevox_engine:cpu-ubuntu20.04-latest
 
 USER root
 
-# 3. 最小限必要なOSの部品を入れる
-RUN apt-get update && apt-get install -y ffmpeg libsndfile1 && apt-get clean
-
-# 4. 公式から「プログラム本体」をコピー
-COPY --from=source /opt/voicevox_engine /opt/voicevox_engine
+# 2. OSの部品（FFmpeg）と、Bot用のライブラリを入れるための pip を用意するまる
+RUN apt-get update && apt-get install -y ffmpeg python3-pip && apt-get clean
 
 WORKDIR /app
 
-# 5. ライブラリのインストール
+# 3. あなたの Bot 用のライブラリ（discord.py, groqなど）をインストール
+# ※ ここで uvicorn や soxr を指定するとエラーになる可能性があるので、
+#    もし requirements.txt にそれらが入っていたら、一旦 discord.py 等だけに絞るのが安全だまる！
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir -r requirements.txt
 
-# エンジンが欲しがっている部品を、今の環境に全部覚えさせるまる！
-RUN pip install --no-cache-dir \
-    "uvicorn[standard]" fastapi "pydantic>=2.0" pydantic-settings soxr semver pyyaml platformdirs
-
+# 4. 全ファイルをコピー
 COPY . .
 
-# 6. 起動スクリプト（ここが解決の鍵まる！）
+# 5. 起動スクリプト（公式の環境をそのまま使うまる！）
 RUN echo '#!/bin/bash\n\
 echo "--- VOICEVOX ENGINE STARTING ---" \n\
 cd /opt/voicevox_engine \n\
 \n\
-# 私たちが pip install した場所（/usr/local/lib/python3.11/site-packages）を \n\
-# PYTHONPATH の先頭に持ってくることで、semver などを確実に見つけさせるまる！ \n\
-export PYTHONPATH=/usr/local/lib/python3.11/site-packages:/opt/voicevox_engine:/opt/voicevox_engine/voicevox_engine:$PYTHONPATH \n\
-\n\
+# 公式イメージの Python 3.8 で run.py を起動するまる！\n\
+# これなら pyopenjtalk も絶対に見つかるはずだもん！\n\
 python3 run.py --host 0.0.0.0 --accept_all_terms & \n\
 \n\
 echo "--- waiting for 60 seconds ---" \n\
@@ -41,6 +31,7 @@ sleep 60 \n\
 \n\
 cd /app \n\
 echo "--- Discord Bot STARTING ---" \n\
+# Botも同じ Python 3.8 で動かすまる！\n\
 python3 bot.py' > start.sh && chmod +x start.sh
 
 CMD ["./start.sh"]
