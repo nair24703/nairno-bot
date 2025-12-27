@@ -3,7 +3,7 @@ FROM voicevox/voicevox_engine:cpu-ubuntu22.04-latest
 
 USER root
 
-# 2. 必要なツールをインストール
+# 2. 必要なツールをインストール（libopus-dev を追加！）
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
     ffmpeg \
