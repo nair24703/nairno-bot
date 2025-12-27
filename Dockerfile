@@ -26,7 +26,9 @@ RUN set -eux \
     && echo "File command output:" && file voicevox_engine.7z.001 || true \
     && echo "Trying to list archive contents (7z l)" && 7z l voicevox_engine.7z.001 || (echo "7z list failed" && ls -la . && exit 1) \
     && echo "Extracting archive to /tmp" && 7z x voicevox_engine.7z.001 -o/tmp || (echo "7z extraction failed" && ls -la /tmp && exit 1) \
-    && EXTRACTED_DIR=$(ls -d /tmp/voicevox_engine-linux-cpu-x64-*) \
+    && echo "--- Contents of /tmp after extraction ---" \
+    && ls -la /tmp \
+    && EXTRACTED_DIR=$(find /tmp -maxdepth 1 -type d -name "voicevox_engine-linux-cpu-x64-*" -print -quit) \
     && if [ -z "$EXTRACTED_DIR" ]; then echo "Extraction succeeded but extracted dir not found" && ls -la /tmp && exit 1; fi \
     && echo "Moving extracted dir: $EXTRACTED_DIR -> ${VOICEVOX_ENGINE_DIR}" \
     && mkdir -p ${VOICEVOX_ENGINE_DIR} \
