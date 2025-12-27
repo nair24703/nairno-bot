@@ -1,34 +1,40 @@
-# 1. VOICEVOX公式イメージをベースにするまる
-FROM voicevox/voicevox_engine:cpu-ubuntu20.04-latest
+# 1. まず公式イメージを素材として読み込む
+FROM voicevox/voicevox_engine:cpu-ubuntu20.04-latest AS source
+
+# 2. 安定した Python 3.11 環境を使うまる
+FROM python:3.11-slim
 
 USER root
 
-# 2. 必要な最小限のツールと、あなたのBotが必要な FFmpeg だけ入れるまる
-RUN apt-get update && apt-get install -y \
-    python3-pip \
-    ffmpeg \
-    libsndfile1 \
-    && apt-get clean
+# 3. OSの部品（FFmpegなど）をインストール
+RUN apt-get update && apt-get install -y ffmpeg libsndfile1 && apt-get clean
+
+# 4. 公式からプログラム本体をコピー
+COPY --from=source /opt/voicevox_engine /opt/voicevox_engine
 
 WORKDIR /app
 
-# 3. あなたの Bot 用のライブラリ（discord.py, groq など）だけを入れるまる
-# ※ ここで python-soxr を入れようとしないのが最大のコツだもん！
+# 5. 【ここが解決の鍵！】
+# 依存関係を「ビルド」させないように、バイナリ配布（wheel）を優先して入れるまる！
 COPY requirements.txt .
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+RUN pip install --no-cache-dir -r requirements.txt
 
-# 4. 全ファイルをコピー
+# soxr などの難しいライブラリを、ビルドツール不要の「バイナリ版」で指定して入れるまる
+RUN pip install --no-cache-dir \
+    "uvicorn[standard]" fastapi requests "numpy<2.0" "pydantic<2.0" \
+    jinja2 aiofiles python-multipart \
+    semver pyyaml platformdirs psutil "soxr"
+
 COPY . .
 
-# 5. 起動スクリプト
+# 6. 起動スクリプト
 RUN echo '#!/bin/bash\n\
 echo "--- VOICEVOX ENGINE STARTING ---" \n\
 cd /opt/voicevox_engine \n\
-\n\
-# 公式イメージの環境をそのまま使うために PYTHONPATH を通すまる\n\
 export PYTHONPATH=$PYTHONPATH:/opt/voicevox_engine \n\
 \n\
-# 依存関係エラーを避けるため、公式の run.py を直接 python3 で叩くまる！ \n\
+# 私たちがライブラリを揃えた Python 3.11 で run.py を動かすまる！\n\
 python3 run.py --host 0.0.0.0 --accept_all_terms & \n\
 \n\
 echo "--- waiting for 60 seconds ---" \n\
