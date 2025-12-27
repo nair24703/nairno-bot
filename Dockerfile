@@ -1,9 +1,9 @@
-# 1. ベースイメージ（22.04版）
+# 1. ベースイメージ
 FROM voicevox/voicevox_engine:cpu-ubuntu22.04-latest
 
 USER root
 
-# 2. 軽量化しつつ必要なツールを導入
+# 2. 必要なツールをインストール（2GB制限に配慮したダイエット版）
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
     ffmpeg \
@@ -17,27 +17,35 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt
 
-# 4. 2GB制限を回避するための掃除（docsなどを削除）
+# 4. 軽量化
 RUN rm -rf /opt/voicevox_engine/docs /opt/voicevox_engine/test
 
 COPY . .
 
-# 5. 起動スクリプト（執念の全自動探索バージョンだまる！）
+# 5. 起動スクリプト（執念の全検索・デバッグ機能付き）
 RUN echo '#!/bin/bash\n\
-echo "--- VOICEVOX ENGINE SEARCHING ---" \n\
+echo "--- DEBUG: DIRECTORY LISTING ---" \n\
+ls -d /* \n\
 \n\
-# エンジンのルートディレクトリと、その一つ下のディレクトリもパスに加えるまる！\n\
-export PYTHONPATH=$PYTHONPATH:/opt/voicevox_engine:/opt/voicevox_engine/voicevox_engine \n\
+echo "--- SEARCHING FOR run.py IN ENTIRE SYSTEM ---" \n\
+# システム全体から run.py を探し、その場所を ENGINE_FILE に保存するまる！ \n\
+ENGINE_FILE=$(find / -name "run.py" -not -path "/app/*" 2>/dev/null | head -n 1) \n\
 \n\
-# run.py を執念で探し出すまる！ \n\
-ENGINE_PATH=$(find /opt/voicevox_engine -name "run.py" | head -n 1) \n\
-\n\
-if [ -n "$ENGINE_PATH" ]; then \n\
-    echo "Found run.py at: $ENGINE_PATH" \n\
-    python3 "$ENGINE_PATH" --host 0.0.0.0 --accept_all_terms & \n\
+if [ -n "$ENGINE_FILE" ]; then \n\
+    ENGINE_DIR=$(dirname "$ENGINE_FILE") \n\
+    echo "Found run.py at: $ENGINE_FILE" \n\
+    echo "Engine directory: $ENGINE_DIR" \n\
+    cd "$ENGINE_DIR" \n\
+    export PYTHONPATH=$PYTHONPATH:"$ENGINE_DIR" \n\
+    python3 "$ENGINE_FILE" --host 0.0.0.0 --accept_all_terms & \n\
 else \n\
-    echo "run.py not found, trying module mode..." \n\
-    python3 -m voicevox_engine --host 0.0.0.0 --accept_all_terms & \n\
+    echo "ERROR: run.py could not be found anywhere!" \n\
+    # 最後の手段：バイナリ形式の実行ファイルがないか探すまる \n\
+    VOICEVOX_BIN=$(find / -name "voicevox_engine" -type f -not -path "/app/*" 2>/dev/null | head -n 1) \n\
+    if [ -n "$VOICEVOX_BIN" ]; then \n\
+        echo "Found binary at: $VOICEVOX_BIN" \n\
+        "$VOICEVOX_BIN" --host 0.0.0.0 --accept_all_terms & \n\
+    fi \n\
 fi \n\
 \n\
 echo "--- waiting for 60 seconds ---" \n\
