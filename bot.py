@@ -75,8 +75,12 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
             with open("response.wav", "wb") as f:
                 f.write(res2.content)
             
-            options = "-loglevel error"
-            voice_client.play(discord.FFmpegPCMAudio("response.wav", options=options))
+            # "-vn"（映像なし）と、再接続に強い設定を追加するまる！
+            ffmpeg_options = {
+                'options': '-vn',
+                'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'
+            }
+            voice_client.play(discord.FFmpegPCMAudio("response.wav", **ffmpeg_options))
             voice_success = True
         except Exception as e:
             print(f"Voice Synthesis Failed: {e}")
