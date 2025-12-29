@@ -58,7 +58,7 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
     try:
         chat_completion = client.chat.completions.create(
             messages=[
-                {"role": "system", "content": "アニメ「鬼滅の刃」に出てくる継国縁壱のような、極めて穏やかで、謙虚かつ淡々とした口調にしてください。しかし敬語は使わないでください。"},
+                {"role": "system", "content": "アニメ「鬼滅の刃」に出てくる継国縁壱のような、極めて穏やかで、謙虚かつ淡々とした口調にしてください。ただし、丁寧語などの敬語は絶対に使わないでください。"},
                 {"role": "user", "content": user_text}
             ],
             model="llama-3.1-8b-instant",
@@ -212,7 +212,7 @@ async def omikuji(interaction: discord.Interaction):
     prompt_content = (
         f"おみくじで「{result}」が出た人への『御神託（お告げ）』を書いてください。"
         f"話す口調は、アニメ「鬼滅の刃」に出てくる継国縁壱のような、極めて穏やかで、謙虚かつ淡々とした口調でお願いします。"
-        f"敬語（特に丁寧語など）は使わないでください。"
+        f"丁寧語などの敬語を絶対に使わないでください。"
         f"おみくじの紙に書いてあるような『教え』を、必ず2文で書いてください。"
         f"『教え』は必ず抽象的にならないように書いてください。"
         f"「AI」という言葉は絶対に使わないでください。"
