@@ -23,14 +23,9 @@ COPY . .
 # 4. 起動スクリプト（エラーの原因だったオプションを消したまる！）
 RUN echo '#!/bin/bash\n\
 echo "--- STARTING VOICEVOX ENGINE ---" \n\
-\n\
-# 突き止めたパスを直接叩くまる！ \n\
-# --accept_all_terms を消して起動するだもん \n\
 /opt/voicevox_engine/run --host 0.0.0.0 & \n\
 \n\
-echo "--- waiting for 60 seconds ---" \n\
-sleep 60 \n\
-\n\
+# ここで sleep せずに直接 Bot を起動し、Bot側で VOICEVOX の準備を待つようにします\n\
 cd /app \n\
 echo "--- Discord Bot STARTING ---" \n\
 python3 bot.py' > start.sh && chmod +x start.sh
