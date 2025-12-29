@@ -205,14 +205,14 @@ async def omikuji(interaction: discord.Interaction):
 @bot.tree.command(name="kazu", description="より低い確率で大きい数が出るまる！運試しにどうぞ！")
 async def kazu(interaction: discord.Interaction):
     n = 0
-    while random.random() < 0.9:
+    while random.random() < 0.95:
         n += 1
 
     base_value = 2 ** n
     variation_percent = random.randint(-100, 100)
     total_result = int(base_value + (base_value * (variation_percent / 100)))
 
-    prob = 0.9 ** n
+    prob = 0.95 ** n
     
     if prob < 1/1000000:
         comment = "どんな卑怯なやり方をしたまる...？もうこれ以上の数は出ないまる...。宝くじ2等レベルの強運だもん！（1/1000000以下）"
@@ -227,7 +227,7 @@ async def kazu(interaction: discord.Interaction):
     else:
         comment = ""
 
-    await interaction.response.send_message(f"**{total_result}**\n{comment}")
+    await interaction.response.send_message(f"**{total_result:,}**\n{comment}")
 
 # --- 起動 ---
 if __name__ == "__main__":
