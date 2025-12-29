@@ -72,13 +72,17 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
     voice_client = interaction.guild.voice_client
 
     if voice_client:
-        # もし接続したばかりで準備ができていない（ハンドシェイク中など）なら、少しだけ待つまる
-        # 1回目対策だもん！
-        if not voice_client.is_connected():
-            counter = 0
-            while not voice_client.is_connected() and counter < 30: # 最大3秒に短縮したまる
-                await asyncio.sleep(0.1)
-                counter += 1
+        # --- ここから修正だもん！ ---
+        # 1回目はまだ「声を通す準備」ができていないことがあるから、
+        # 接続が完全に安定（is_connected）するまで、最大3秒だけ待機するまる
+        for _ in range(30):
+            if voice_client.is_connected():
+                break
+            await asyncio.sleep(0.1)
+        
+        # 接続直後の「無音の時間」を埋めるために、さらに少しだけ待つのがコツだもん！
+        await asyncio.sleep(1.0) 
+        # --- ここまで修正だまる ---
 
         try:
             # VOICEVOXとの通信開始だもん！
