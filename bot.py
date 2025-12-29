@@ -221,7 +221,7 @@ async def kazu(interaction: discord.Interaction):
         top = "╔" + "═" * (num_len + 2) + "╗"
         mid = "║ " + formatted_num + " ║"
         bottom = "╚" + "═" * (num_len + 2) + "╝"
-        display_text = f"# {top}\n# {mid}\n# {bottom}"
+        display_text = f"# {top}\n{mid}\n{bottom}"
         comment = "どんな卑怯なやり方をしたまる...？もうこれ以上の数は出ないまる...。宝くじ2等レベルの強運だもん！（1/1,000,000以下）"
     
     elif prob <= 1/100000:
