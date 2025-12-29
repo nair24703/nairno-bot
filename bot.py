@@ -48,7 +48,7 @@ bot = MyBot()
 
 # --- 共通の対話ロジック ---
 async def process_voice_interaction(interaction: discord.Interaction, user_text: str):
-    # 1. Groq AIで返答生成 (省略せずそのまま維持)
+    # 1. Groq AIで返答生成
     try:
         chat_completion = client.chat.completions.create(
             messages=[
@@ -69,9 +69,9 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
 
     if voice_client and voice_client.is_connected():
         try:
-            # 非同期で通信するための「窓口」を作るまる
+            # 非同期で通信するための窓口
             async with httpx.AsyncClient() as httpx_client:
-                # 1. レシピ作成 (audio_query)
+                # 1. レシピ作成
                 res1 = await httpx_client.post(
                     f'{VOICEVOX_URL}/audio_query', 
                     params={'text': response_text, 'speaker': HANAMARU_ID}, 
@@ -80,12 +80,12 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
                 res1.raise_for_status()
                 query_data = res1.json()
 
-                # 2. 音声波形生成 (synthesis) - ここでBotを止めずに待つまる！
+                # 2. 音声波形生成
                 res2 = await httpx_client.post(
                     f'{VOICEVOX_URL}/synthesis',
                     params={'speaker': HANAMARU_ID},
                     json=query_data,
-                    timeout=60.0  # 長い文章でも大丈夫なように60秒待つまる
+                    timeout=60.0
                 )
                 res2.raise_for_status()
                 
@@ -93,19 +93,24 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
                 with open("response.wav", "wb") as f:
                     f.write(res2.content)
             
+            # 書き出し完了を待機
+            await asyncio.sleep(1) 
+            
             # 4. 再生
             ffmpeg_options = {
                 'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
                 'options': '-vn'
             }
-            # 再生開始
+            if voice_client.is_playing():
+                voice_client.stop()
+            
             voice_client.play(discord.FFmpegPCMAudio("response.wav", **ffmpeg_options))
             voice_success = True
 
         except Exception as e:
+            # ★ここが抜けていたまる！エラーをログに出す大事な部分だもん
             print(f"--- VOICE ERROR LOG ---")
-            print(f"Error Type: {type(e).__name__}")
-            print(f"Error Details: {e}")
+            print(f"Error: {e}")
 
     # 3. お返事
     if voice_success:
