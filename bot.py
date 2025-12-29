@@ -251,44 +251,44 @@ async def kazu(interaction: discord.Interaction):
     await interaction.response.send_message(f"{display_text}\n{comment}")
 
 # 【テスト用】kazuコマンドの全演出を確認するコマンド
-@bot.tree.command(name="kazu_test", description="kazuコマンドの各レア演出を順番にテスト表示するまる！")
+@bot.tree.command(name="kazu_test", description="ライン演出のテスト表示をするまる！")
 async def kazu_test(interaction: discord.Interaction):
     test_cases = [
-        (1/100, "100分の1演出（太字）"),
-        (1/1000, "1,000分の1演出（中見出し）"),
-        (1/10000, "10,000分の1演出（大見出し）"),
-        (1/100000, "100,000分の1演出（大見出し＋枠）"),
-        (1/1000000, "1,000,000分の1演出（大見出し＋二重枠）")
+        (1/100, "100分の1（太字）"),
+        (1/1000, "1,000分の1（中見出し）"),
+        (1/10000, "10,000分の1（大見出し）"),
+        (1/100000, "100,000分の1（大見出し＋ライン）"),
+        (1/1000000, "1,000,000分の1（大見出し＋二重ライン）")
     ]
     
     dummy_results = [250, 5000, 800000, 1500000000, 999999999999999]
-
     responses = []
-    for i, (prob, label) in enumerate(test_cases):
-        formatted_num = f"{dummy_results[i]:,}"
-        num_len = len(formatted_num)
-        
-        if prob <= 1/1000000:
-            # 整数にするため + 2 を使用。コードブロック内ならこれでピッタリ合います
-            top = "╔" + "═" * (num_len + 2) + "╗"
-            mid = "║ " + formatted_num + " ║"
-            bottom = "╚" + "═" * (num_len + 2) + "╝"
-            display_text = f"# ```\n{top}\n{mid}\n{bottom}\n```"
-        elif prob <= 1/100000:
-            top = "┌" + "─" * (num_len + 2) + "┐"
-            mid = "│ " + formatted_num + " │"
-            bottom = "└" + "─" * (num_len + 2) + "┘"
-            display_text = f"# ```\n{top}\n{mid}\n{bottom}\n```"
-        elif prob <= 1/10000:
-            display_text = f"# {formatted_num}"
-        elif prob <= 1/1000:
-            display_text = f"## {formatted_num}"
-        elif prob <= 1/100:
-            display_text = f"**{formatted_num}**"
-        else:
-            display_text = formatted_num
 
-        responses.append(f"【{label}のテスト】\n{display_text}")
+    for i, (prob, label) in enumerate(test_cases):
+        f_num = f"{dummy_results[i]:,}"
+        num_len = len(f_num)
+        
+        # ラインの長さを数字+4に設定
+        # ただし全角記号は幅が広いため、調整係数として0.7倍程度にしています
+        line_len = int((num_len + 4) * 0.7) 
+        if line_len < 4: line_len = 4 # 最低限の長さ
+
+        if prob <= 1/1000000:
+            line = "═" * line_len
+            display = f"# {line}\n#  {f_num} \n# {line}"
+        elif prob <= 1/100000:
+            line = "─" * line_len
+            display = f"# {line}\n#  {f_num} \n# {line}"
+        elif prob <= 1/10000:
+            display = f"# {f_num}"
+        elif prob <= 1/1000:
+            display = f"## {f_num}"
+        elif prob <= 1/100:
+            display = f"**{f_num}**"
+        else:
+            display = f_num
+
+        responses.append(f"【{label}】\n{display}")
 
     await interaction.response.send_message("\n\n".join(responses))
 
