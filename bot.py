@@ -127,7 +127,7 @@ async def help_command(interaction: discord.Interaction):
     
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
-@bot.tree.command(name="start", description="ボイスチャンネルに接続して対話を開始します")
+@bot.tree.command(name="start", description="ボイスチャンネルに接続するまる！")
 async def start(interaction: discord.Interaction):
     if interaction.user.voice:
         channel = interaction.user.voice.channel
@@ -136,7 +136,7 @@ async def start(interaction: discord.Interaction):
     else:
         await interaction.response.send_message("まずはボイスチャンネルに入ってほしいだもん！")
 
-@bot.tree.command(name="stop", description="ボイスチャンネルから切断します")
+@bot.tree.command(name="stop", description="ボイスチャンネルから切断するまる。")
 async def stop(interaction: discord.Interaction):
     if interaction.guild.voice_client:
         await interaction.guild.voice_client.disconnect()
@@ -202,7 +202,7 @@ async def omikuji(interaction: discord.Interaction):
     await interaction.followup.send(embed=embed)
 
 # 7. より低い確率で大きい数が出るコマンド
-@bot.tree.command(name="kazu", description="より低い確率で大きい数が出ます。")
+@bot.tree.command(name="kazu", description="より低い確率で大きい数が出るまる！運試しにどうぞ！")
 async def kazu(interaction: discord.Interaction):
     n = 0
     while random.random() < 0.9:
@@ -215,13 +215,13 @@ async def kazu(interaction: discord.Interaction):
     prob = 0.9 ** n
     
     if prob < 1/1000000:
-        comment = "どんな卑怯なやり方をしたまる...？もうこれ以上の数は出ないまる...。宝くじ2等レベルの強運だもん！"
+        comment = "どんな卑怯なやり方をしたまる...？もうこれ以上の数は出ないまる...。宝くじ2等レベルの強運だもん！（1/1000000以下）"
     elif prob < 1/100000:
-        comment = "あなたは一体何度このコマンドを使用したまる...？これは手術の全身麻酔事故で死亡する確率に相当するまる。"
+        comment = "あなたは一体何度このコマンドを使用したまる...？これは手術の全身麻酔事故で死亡する確率に相当するまる。（1/100000以下）"
     elif prob < 1/10000:
-        comment = "どうやってここまでたどり着いたまる？恐ろしい強運だもん。これは一生涯に落雷に遭う確率に相当するまる！"
+        comment = "どうやってここまでたどり着いたまる？恐ろしい強運だもん。これは一生涯に落雷に遭う確率に相当するまる！（1/10000以下）"
     elif prob < 1/1000:
-        comment = "すごすぎだもん！これは今日家を出たら事故に遭う確率に相当するまる。"
+        comment = "すごすぎだもん！これは今日家を出たら事故に遭う確率に相当するまる。（1/1000以下）"
     elif prob < 1/100:
         comment = "100分の1を超えたまる！" 
     else:
