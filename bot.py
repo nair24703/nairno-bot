@@ -8,12 +8,16 @@ import requests
 import random
 import math
 import httpx
+import logging
 from pydub import AudioSegment
 from flask import Flask
 from threading import Thread
 
 # --- Flask (Koyebヘルスチェック回避用) ---
 app = Flask('')
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.WARNING)
+
 @app.route('/')
 def home():
     return "I'm alive"
