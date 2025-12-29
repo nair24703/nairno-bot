@@ -53,9 +53,10 @@ bot = MyBot()
 # --- 共通の対話ロジック ---
 async def process_voice_interaction(interaction: discord.Interaction, user_text: str):
     step = "開始"
-    print(f"--- [DEBUG] {step}: ユーザー入力 = {user_text}")
+    # デバッグログをより目立つように変更
+    print(f"\n===== [TALK START] =====")
+    print(f"STEP: {step} / INPUT: {user_text}")
     
-    # 応答用メッセージの初期化
     user_name = interaction.user.display_name
     display_message = ""
 
@@ -70,16 +71,18 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
             model="llama-3.1-8b-instant",
         )
         response_text = chat_completion.choices[0].message.content
-        print(f"--- [DEBUG] AI返答成功: {response_text}")
+        print(f"STEP: AI返答成功 / TEXT: {response_text}")
 
-        combined_text = f"{user_name}「{user_text}」……ネアーノ「{response_text}」"
+        # 読み上げテキストを結合
+        combined_text = f"{user_name}、{user_text}。ネアーノ、{response_text}"
         display_message = f"**{user_name}**: {user_text}\n**ネアーノ**: {response_text}"
 
         # 2. VOICEVOXでの音声合成
         voice_success = False
         
         step = "VOICEVOXリクエスト開始"
-        async with httpx.AsyncClient(timeout=httpx.Timeout(60.0)) as httpx_client:
+        # タイムアウトを120秒に延長し、サーバー切断に備える
+        async with httpx.AsyncClient(timeout=httpx.Timeout(120.0)) as httpx_client:
             # クエリ作成
             step = "VOICEVOXクエリ作成"
             res1 = await httpx_client.post(
@@ -89,8 +92,9 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
             res1.raise_for_status()
             query_data = res1.json()
 
-            # 音声合成
+            # 音声合成 (ここが一番重い)
             step = "VOICEVOX音声合成"
+            print("INFO: 音声合成中... (時間がかかる場合があります)")
             res2 = await httpx_client.post(
                 f'{VOICEVOX_URL}/synthesis',
                 params={'speaker': HANAMARU_ID},
@@ -101,35 +105,37 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
             step = "ファイル保存"
             with open("response.wav", "wb") as f:
                 f.write(res2.content)
-            print("--- [DEBUG] 音声ファイル保存完了")
+            print("INFO: 音声ファイル保存完了")
 
         # 3. 再生処理
         step = "ボイスクライアント確認"
+        # 最新のクライアントを再取得
         voice_client = interaction.guild.voice_client
 
         if voice_client:
             step = "VC接続待ち"
-            count = 0
-            # 接続されるまで最大6秒待機
-            while not voice_client.is_connected() and count < 60:
+            # 接続が切れていたら再接続を待つ
+            for i in range(100):
+                if voice_client.is_connected():
+                    break
                 await asyncio.sleep(0.1)
-                count += 1
             
             if voice_client.is_connected():
-                step = "再生準備"
-                await asyncio.sleep(1.0)
+                step = "再生実行"
+                # FFmpegの起動を確実にするための待機
+                await asyncio.sleep(1.5)
+                
                 ffmpeg_options = {'options': '-vn'}
                 if voice_client.is_playing():
                     voice_client.stop()
                 
-                step = "再生実行"
                 voice_client.play(discord.FFmpegPCMAudio("response.wav", **ffmpeg_options))
-                print("--- [DEBUG] 再生コマンド送信完了")
+                print("INFO: 再生を開始しました")
                 voice_success = True
             else:
-                print("--- [DEBUG] VC接続タイムアウト")
+                print("ERROR: VC接続がタイムアウトしました")
         else:
-            print("--- [DEBUG] voice_clientが見つからない")
+            print("ERROR: voice_clientが見つかりません")
 
         # 4. メッセージ送信
         if voice_success:
@@ -140,11 +146,13 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
     except Exception as e:
         error_msg = f"!!! [CRITICAL ERROR] 段階: {step} / 内容: {str(e)}"
         print(error_msg)
-        # 最低限の返答を返す
-        if not interaction.responses.is_done():
-             await interaction.followup.send(f"（不具合が生じた。段階: {step}）\n{display_message if display_message else ''}")
-        else:
-             print("Interaction already finished, could not send error message to Discord.")
+        # エラー表示の修正 (responses -> response)
+        try:
+            await interaction.followup.send(f"（不具合が生じた。段階: {step}）\n{display_message if display_message else ''}")
+        except:
+            print("Could not send error message to Discord.")
+    
+    print(f"===== [TALK END] =====\n")
 
 # --- スラッシュコマンド定義 ---
 
