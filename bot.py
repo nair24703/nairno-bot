@@ -56,7 +56,7 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
     try:
         chat_completion = client.chat.completions.create(
             messages=[
-                {"role": "system", "content": "あなたは古風な言い回しを使う男性です。"},
+                {"role": "system", "content": "アニメ「鬼滅の刃」に出てくる継国縁壱のような、極めて穏やかで、謙虚かつ淡々とした口調にしてください。"},
                 {"role": "user", "content": user_text}
             ],
             model="llama-3.1-8b-instant",
@@ -64,7 +64,7 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
         response_text = chat_completion.choices[0].message.content
     except Exception as e:
         print(f"Groq Error: {e}")
-        await interaction.followup.send("AIが会話を行うことができません。")
+        await interaction.followup.send("済まない。AIが会話を行うことができないようだ。")
         return
 
 # 2. VOICEVOXでの音声合成
@@ -75,7 +75,7 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
     if voice_client and voice_client.is_connected():
         try:
             # 1回目でも動くように、VOICEVOXに注文する前に「自分が準備OKか」だけ確認
-            # 無理なループ待機はやめて、一瞬だけ間を置くまる
+            # 無理なループ待機はやめて、一瞬だけ間を置く
             await asyncio.sleep(0.5)
 
             async with httpx.AsyncClient() as httpx_client:
@@ -83,7 +83,7 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
                 res1 = await httpx_client.post(
                     f'{VOICEVOX_URL}/audio_query', 
                     params={'text': response_text, 'speaker': HANAMARU_ID}, 
-                    timeout=15.0 # 少し余裕を持たせるまる
+                    timeout=15.0
                 )
                 res1.raise_for_status()
                 query_data = res1.json()
@@ -100,7 +100,7 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
                 with open("response.wav", "wb") as f:
                     f.write(res2.content)
             
-            # 再生直前の短い待機（これが1回目対策だもん！）
+            # 再生直前の短い待機
             await asyncio.sleep(0.5) 
             
             ffmpeg_options = {'options': '-vn'}
@@ -116,11 +116,11 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
 
     # 3. お返事
     if voice_success:
-        await interaction.followup.send(f"**花丸**: {response_text}")
+        await interaction.followup.send(f"**縁壱**: {response_text}")
     else:
-        # 声が出なかった原因をログに出すようにしたまる！
+        # 声が出なかった原因をログに出すようにした
         print("Voice success was False. Check if voice_client was None or connection failed.")
-        await interaction.followup.send(f"（ごめんね、声が出ないから文字でお返事するまる！）\n**花丸**: {response_text}")
+        await interaction.followup.send(f"（声が届かないようだ。済まないが、今は文字で伝えさせてほしい。）\n**縁壱**: {response_text}")
 
 # --- スラッシュコマンド定義 ---
 
@@ -129,17 +129,17 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
 async def help_command(interaction: discord.Interaction):
     embed = discord.Embed(
         title="ネアーノBot 使い方ガイド",
-        description="私はAI（Groq）とVOICEVOXを搭載した男性です。",
+        description="私はAI（Groq）とVOICEVOXを搭載した者だ。",
         color=discord.Color.pink()
     )
     embed.add_field(name="/start", value="ボイスチャンネルに接続する。声で会話したい場合はこちらを使おう。", inline=False)
-    embed.add_field(name="/talk [メッセージ]", value="満別花丸というキャラと会話する。VCに接続している場合は声で会話する。", inline=False)
+    embed.add_field(name="/talk [メッセージ]", value="満別花丸というキャラクターと会話する。VCに接続している場合は声で会話する。", inline=False)
     embed.add_field(name="/stop", value="VCから切断する。", inline=False)
     embed.add_field(name="/kazu", value="より小さい確率で大きい数が出る。特に大きい数が出ると何かあるかも？", inline=False)
-    embed.add_field(name="/omikuji", value="伏見稲荷大社風・AIおみくじを引く。", inline=False)
+    embed.add_field(name="/omikuji", value="伏見稲荷大社風おみくじを引く。", inline=False)
     embed.add_field(name="/help", value="このメニューを表示する。", inline=False)
 
-    embed.set_footer(text="使い方がわからなくなったらいつでも使うといい。")
+    embed.set_footer(text="使い方に迷ったときは、いつでもこの案内を見るといい。")
     
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -148,17 +148,17 @@ async def start(interaction: discord.Interaction):
     if interaction.user.voice:
         channel = interaction.user.voice.channel
         await channel.connect()
-        await interaction.response.send_message(f"{channel.name} に接続したまる！話しかけてほしいだもん。")
+        await interaction.response.send_message(f"{channel.name} に接続した。私に何か用があれば、いつでも話しかけてほしい。")
     else:
-        await interaction.response.send_message("まずはボイスチャンネルに入ってほしいだもん！")
+        await interaction.response.send_message("まずはボイスチャンネルに入ってくれないだろうか。")
 
 @bot.tree.command(name="stop", description="VCから切断する")
 async def stop(interaction: discord.Interaction):
     if interaction.guild.voice_client:
         await interaction.guild.voice_client.disconnect()
-        await interaction.response.send_message("バイバイだもん！また呼んでね。")
+        await interaction.response.send_message("承知した。また会える日を楽しみにしている。")
     else:
-        await interaction.response.send_message("今はどこにも繋がっていないまる。")
+        await interaction.response.send_message("今はどこにも繋がっていないようだ。")
 
 @bot.tree.command(name="talk", description="花丸と会話する")
 @app_commands.describe(message="話したい内容を入力してね")
@@ -184,10 +184,10 @@ async def omikuji(interaction: discord.Interaction):
     weights = [2, 8, 5, 5, 3, 12, 10, 10, 8, 10, 5, 5, 4, 4, 3, 4, 2]
     result = random.choices(fortunes, weights=weights, k=1)[0]
 
-    # AIへの指示を「おみくじの本文」風に変更するまる！
+    # AIへの指示を「おみくじの本文」風に変更
     prompt_content = (
         f"おみくじで「{result}」が出た人への『御神託（お告げ）』を書いてください。 "
-        f"あなたは古風な言い回しを使う男性です。 "
+        f"あなたはアニメ「鬼滅の刃」に出てくる継国縁壱のような、極めて穏やかで、謙虚かつ淡々とした口調で話す男性です。 "
         f"おみくじの紙に書いてあるような『教え』を2〜3文で短く書いてください。 "
         f"「AI」という言葉は絶対に使わないでください。"
     )
@@ -203,22 +203,22 @@ async def omikuji(interaction: discord.Interaction):
         ai_advice = chat_completion.choices[0].message.content
     except Exception as e:
         print(f"Groq API Error: {e}")
-        ai_advice = f"神様との通信が途切れてしまった…。しかし「{result}」は授かった大切な運勢だ。大切にしてほしい。"
+        ai_advice = f"神様の導きが途切れてしまったようだ。だが、この「{result}」という運命を静かに受け止めてほしい。"
 
     # 見た目も「AI」を消して、神社っぽくするまる！
     embed = discord.Embed(
         title="🦊 伏見稲荷大社・奉納おみくじ 🦊",
-        description=f"そなたの運勢をお出しした。\n\n**【 運 勢 】**\n# {result}",
+        description=f"あなたの運勢をお出しした。\n\n**【 運 勢 】**\n# {result}",
         color=discord.Color.red()
     )
-    # フィールド名を「御神託」や「教え」にするまる
+    # フィールド名を「御神託」や「教え」にする
     embed.add_field(name="御神託", value=ai_advice)
-    embed.set_footer(text="伏見稲荷の伝統的な17種類。大切にするんだぞ。")
+    embed.set_footer(text="伏見稲荷の伝統的な17種類。この教えを大切にするのだぞ。")
     
     await interaction.followup.send(embed=embed)
 
 # 7. より低い確率で大きい数が出るコマンド
-@bot.tree.command(name="kazu", description="より低い確率で大きい数が出る（非常に大きい数が出るとなにかあるかも...？）")
+@bot.tree.command(name="kazu", description="より低い確率で大きい数が出る（非常に大きい数が出ると何かあるかもしれない...）")
 async def kazu(interaction: discord.Interaction):
     n = 0
     # 継続確率 95%
@@ -236,19 +236,19 @@ async def kazu(interaction: discord.Interaction):
     # 演出の分岐：1/10,000以下はすべて最大サイズ（#）
     if prob <= 1/1000000:
         display = f"# {f_num}"
-        comment = f"ありえない...！！そんな数が出るなんて！宝くじ2等レベルの確率なんだぞ！（💰1/1,000,000以下）"
+        comment = f"信じがたい。これほどの巡り合わせに出会うとは。稀有な運命を持っているのだな。これは宝くじ2等レベルの確率に相当する！（💰1/1,000,000以下）"
     elif prob <= 1/100000:
         display = f"# {f_num}"
-        comment = f"一体何度このコマンドを使用した...？よくここまで来れたな。これは手術の全身麻酔事故で死亡する確率に相当する。（☠️1/100,000以下）"
+        comment = f"そなたは、一体どれほどの道を歩んできたのだ。その歩みが、この奇跡を引き寄せたのかもしれぬ。これは手術の全身麻酔事故で死亡する確率に相当する。（☠️1/100,000以下）"
     elif prob <= 1/10000:
         display = f"# {f_num}"
-        comment = f"どうやってここまでたどり着いた...。そなたは恐ろしい強運を持っている。これは一生涯に落雷に遭う確率に相当する。（⚡1/10,000以下）"
+        comment = f"驚いた。これほどまでの強運を目の当たりにすることは、滅多にないことだ。これは一生涯に落雷に遭う確率に相当する。（⚡1/10,000以下）"
     elif prob <= 1/1000:
         display = f"## {f_num}"
-        comment = f"なんだと？やるじゃないか。これは今日家を出たら事故に遭う確率に相当する。（🤯1/1,000以下）"
+        comment = f"見事だ。そなたの持つ力が、この結果を導いたのだろう。これは今日家を出たら事故に遭う確率に相当する。（💥1/1,000以下）"
     elif prob <= 1/100:
         display = f"**{f_num}**"
-        comment = f"100分の1に到達...。（🔥1/100以下）"
+        comment = f"百に一つの巡り合わせか。良い兆しだ。（🔥1/100以下）"
     else:
         display = f_num
         comment = ""
@@ -259,11 +259,11 @@ async def kazu(interaction: discord.Interaction):
 @bot.tree.command(name="kazu_test", description="演出のテスト表示をする")
 async def kazu_test(interaction: discord.Interaction):
     test_cases = [
-        (1/100, "100分の1（太字）"),
-        (1/1000, "1,000分の1（中見出し）"),
-        (1/10000, "10,000分の1（大見出し）"),
-        (1/100000, "100,000分の1（大見出し：統一）"),
-        (1/1000000, "1,000,000分の1（大見出し：統一）")
+        (1/100, "百分の1"),
+        (1/1000, "千分の1"),
+        (1/10000, "一万分の1"),
+        (1/100000, "十万分の1"),
+        (1/1000000, "百万分の1")
     ]
     
     dummy_results = [250, 5000, 800000, 1500000000, 999999999999999]
@@ -272,7 +272,7 @@ async def kazu_test(interaction: discord.Interaction):
     for i, (prob, label) in enumerate(test_cases):
         f_num = f"{dummy_results[i]:,}"
         
-        if prob <= 1/10000: # 1万分の1以下はすべて同じ「#」
+        if prob <= 1/10000:
             display = f"# {f_num}"
         elif prob <= 1/1000:
             display = f"## {f_num}"
