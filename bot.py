@@ -228,7 +228,7 @@ async def kazu(interaction: discord.Interaction):
         top = "┌" + "─" * (num_len + 2) + "┐"
         mid = "│ " + formatted_num + " │"
         bottom = "└" + "─" * (num_len + 2) + "┘"
-        display_text = f"# {top}\n# {mid}\n# {bottom}"
+        display_text = f"# {top}\n{mid}\n{bottom}"
         comment = "あなたは一体何度このコマンドを使用したまる...？これは手術の全身麻酔事故で死亡する確率に相当するまる。（1/100,000以下）"
     
     elif prob <= 1/10000:
@@ -276,12 +276,12 @@ async def kazu_test(interaction: discord.Interaction):
             top = "╔" + "═" * (num_len + 2) + "╗"
             mid = "║ " + formatted_num + " ║"
             bottom = "╚" + "═" * (num_len + 2) + "╝"
-            display = f"# {top}\n# {mid}\n# {bottom}"
+            display = f"# {top}\n{mid}\n{bottom}"
         elif prob <= 1/100000:
             top = "┌" + "─" * (num_len + 2) + "┐"
             mid = "│ " + formatted_num + " │"
             bottom = "└" + "─" * (num_len + 2) + "┘"
-            display = f"# {top}\n# {mid}\n# {bottom}"
+            display_text = f"# {top}\n{mid}\n{bottom}"
         elif prob <= 1/10000:
             display = f"# {formatted_num}"
         elif prob <= 1/1000:
