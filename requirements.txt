@@ -4,3 +4,4 @@ requests
 pydub
 flask
 PyNaCl
+httpx
