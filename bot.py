@@ -116,12 +116,11 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
 
     # 3. お返事
     if voice_success:
-        await interaction.followup.send(f"**縁壱**: {response_text}")
+        await interaction.followup.send(f"**花丸**: {response_text}")
     else:
         # 声が出なかった原因をログに出すようにした
         print("Voice success was False. Check if voice_client was None or connection failed.")
-        await interaction.followup.send(f"（声が届かないようだ。済まないが、今は文字で伝えさせてほしい。）\n**縁壱**: {response_text}")
-
+        await interaction.followup.send(f"（声が届かないようだ。済まないが、今は文字で伝えさせてほしい。）\n**花丸**: {response_text}")
 # --- スラッシュコマンド定義 ---
 
 # 5. ヘルプコマンド
@@ -186,9 +185,10 @@ async def omikuji(interaction: discord.Interaction):
 
     # AIへの指示を「おみくじの本文」風に変更
     prompt_content = (
-        f"おみくじで「{result}」が出た人への『御神託（お告げ）』を書いてください。 "
-        f"あなたはアニメ「鬼滅の刃」に出てくる継国縁壱のような、極めて穏やかで、謙虚かつ淡々とした口調で話す男性です。 "
-        f"おみくじの紙に書いてあるような『教え』を2〜3文で短く書いてください。 "
+        f"おみくじで「{result}」が出た人への『御神託（お告げ）』を書いてください。"
+        f"あなたはアニメ「鬼滅の刃」に出てくる継国縁壱のような、極めて穏やかで、謙虚かつ淡々とした口調で話す男性です。"
+        f"おみくじの紙に書いてあるような『教え』を2〜3文で書いてください。"
+        f"『教え』は必ず抽象的にならないように書いてください。"
         f"「AI」という言葉は絶対に使わないでください。"
     )
 
