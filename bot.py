@@ -217,18 +217,19 @@ async def kazu(interaction: discord.Interaction):
     num_len = len(formatted_num) # 数字の文字数を取得（カンマ含む）
     
     if prob <= 1/1000000:
-        # 数字の長さに合わせて上下の棒を増やす
+        # コードブロックを使うことで、全角記号と半角数字の幅を固定します
         top = "╔" + "═" * (num_len + 2) + "╗"
         mid = "║ " + formatted_num + " ║"
         bottom = "╚" + "═" * (num_len + 2) + "╝"
-        display_text = f"# {top}\n{mid}\n{bottom}"
+        # # の後に ``` を置くことで、大きく表示しつつ等幅にします
+        display_text = f"# ```\n{top}\n{mid}\n{bottom}\n```"
         comment = "どんな卑怯なやり方をしたまる...？もうこれ以上の数は出ないまる...。宝くじ2等レベルの強運だもん！（1/1,000,000以下）"
     
     elif prob <= 1/100000:
         top = "┌" + "─" * (num_len + 2) + "┐"
         mid = "│ " + formatted_num + " │"
         bottom = "└" + "─" * (num_len + 2) + "┘"
-        display_text = f"# {top}\n{mid}\n{bottom}"
+        display_text = f"# ```\n{top}\n{mid}\n{bottom}\n```"
         comment = "あなたは一体何度このコマンドを使用したまる...？これは手術の全身麻酔事故で死亡する確率に相当するまる。（1/100,000以下）"
     
     elif prob <= 1/10000:
@@ -273,24 +274,24 @@ async def kazu_test(interaction: discord.Interaction):
         
         # --- ここから kazu コマンドの表示ロジックを再現 ---
         if prob <= 1/1000000:
-            top = "╔" + "═" * (num_len + 2) + "╗"
+            top = "╔" + "═" * (num_len * 1/3) + "╗"
             mid = "║ " + formatted_num + " ║"
-            bottom = "╚" + "═" * (num_len + 2) + "╝"
-            display = f"# {top}\n{mid}\n{bottom}"
+            bottom = "╚" + "═" * (num_len * 1/3) + "╝"
+            display_text = f"# ```\n{top}\n{mid}\n{bottom}\n```"
         elif prob <= 1/100000:
-            top = "┌" + "─" * (num_len + 2) + "┐"
+            top = "┌" + "─" * (num_len * 1/3) + "┐"
             mid = "│ " + formatted_num + " │"
-            bottom = "└" + "─" * (num_len + 2) + "┘"
-            display_text = f"# {top}\n{mid}\n{bottom}"
+            bottom = "└" + "─" * (num_len * 1/3) + "┘"
+            display_text = f"# ```\n{top}\n{mid}\n{bottom}\n```"
         elif prob <= 1/10000:
-            display = f"# {formatted_num}"
+            display_text = f"# {formatted_num}"
         elif prob <= 1/1000:
-            display = f"## {formatted_num}"
+            display_text = f"## {formatted_num}"
         elif prob <= 1/100:
-            display = f"**{formatted_num}**"
+            display_text = f"**{formatted_num}**"
         # --- 再現ここまで ---
 
-        responses.append(f"【{label}のテスト】\n{display}")
+        responses.append(f"【{label}のテスト】\n{display_text}")
 
     # まとめて送信
     await interaction.response.send_message("\n\n".join(responses))
