@@ -67,14 +67,16 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
         await interaction.followup.send("AIがお喋りをお休みしてるみたいだもん...。")
         return
 
-# 2. VOICEVOXでの音声合成
+    # 2. VOICEVOXでの音声合成
     voice_success = False
     voice_client = interaction.guild.voice_client
 
-    if voice_client and voice_client.is_connected():
-        while not voice_client.is_ready():
+    if voice_client:
+        counter = 0
+        while not voice_client.is_connected() and counter < 50:
             await asyncio.sleep(0.1)
-        
+            counter += 1
+
         try:
             # 非同期で通信するための窓口
             async with httpx.AsyncClient() as httpx_client:
