@@ -52,9 +52,12 @@ bot = MyBot()
 
 # --- 共通の対話ロジック ---
 async def process_voice_interaction(interaction: discord.Interaction, user_text: str):
-    # どこまで進んだか追跡するための変数
     step = "開始"
-    print(f"--- [TALK LOG] {step}: 入力内容 = {user_text}")
+    print(f"--- [DEBUG] {step}: ユーザー入力 = {user_text}")
+    
+    # 応答用メッセージの初期化
+    user_name = interaction.user.display_name
+    display_message = ""
 
     try:
         # 1. Groq AIで返答生成
@@ -67,19 +70,18 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
             model="llama-3.1-8b-instant",
         )
         response_text = chat_completion.choices[0].message.content
-        print(f"--- [TALK LOG] AI返答成功: {response_text}")
+        print(f"--- [DEBUG] AI返答成功: {response_text}")
 
-        user_name = interaction.user.display_name
         combined_text = f"{user_name}「{user_text}」……ネアーノ「{response_text}」"
         display_message = f"**{user_name}**: {user_text}\n**ネアーノ**: {response_text}"
 
         # 2. VOICEVOXでの音声合成
         voice_success = False
         
-        step = "VOICEVOX接続開始"
+        step = "VOICEVOXリクエスト開始"
         async with httpx.AsyncClient(timeout=httpx.Timeout(60.0)) as httpx_client:
             # クエリ作成
-            step = "VOICEVOXクエリ作成(audio_query)"
+            step = "VOICEVOXクエリ作成"
             res1 = await httpx_client.post(
                 f'{VOICEVOX_URL}/audio_query', 
                 params={'text': combined_text, 'speaker': HANAMARU_ID}
@@ -88,7 +90,7 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
             query_data = res1.json()
 
             # 音声合成
-            step = "VOICEVOX音声合成(synthesis)"
+            step = "VOICEVOX音声合成"
             res2 = await httpx_client.post(
                 f'{VOICEVOX_URL}/synthesis',
                 params={'speaker': HANAMARU_ID},
@@ -99,6 +101,7 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
             step = "ファイル保存"
             with open("response.wav", "wb") as f:
                 f.write(res2.content)
+            print("--- [DEBUG] 音声ファイル保存完了")
 
         # 3. 再生処理
         step = "ボイスクライアント確認"
@@ -107,23 +110,26 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
         if voice_client:
             step = "VC接続待ち"
             count = 0
+            # 接続されるまで最大6秒待機
             while not voice_client.is_connected() and count < 60:
                 await asyncio.sleep(0.1)
                 count += 1
             
             if voice_client.is_connected():
-                step = "再生開始"
+                step = "再生準備"
                 await asyncio.sleep(1.0)
                 ffmpeg_options = {'options': '-vn'}
                 if voice_client.is_playing():
                     voice_client.stop()
                 
+                step = "再生実行"
                 voice_client.play(discord.FFmpegPCMAudio("response.wav", **ffmpeg_options))
+                print("--- [DEBUG] 再生コマンド送信完了")
                 voice_success = True
             else:
-                print("--- [TALK LOG] VC接続待機タイムアウト")
+                print("--- [DEBUG] VC接続タイムアウト")
         else:
-            print("--- [TALK LOG] voice_clientが見つからない")
+            print("--- [DEBUG] voice_clientが見つからない")
 
         # 4. メッセージ送信
         if voice_success:
@@ -132,11 +138,13 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
             await interaction.followup.send(f"（声の準備が間に合わなかった。済まない。）\n{display_message}")
 
     except Exception as e:
-        # どんなエラーが起きても必ずここを通るようにする
         error_msg = f"!!! [CRITICAL ERROR] 段階: {step} / 内容: {str(e)}"
         print(error_msg)
-        # ユーザーにもエラー段階を伝える
-        await interaction.followup.send(f"（不具合が生じた。段階: {step}）\n{display_message if 'display_message' in locals() else ''}")
+        # 最低限の返答を返す
+        if not interaction.responses.is_done():
+             await interaction.followup.send(f"（不具合が生じた。段階: {step}）\n{display_message if display_message else ''}")
+        else:
+             print("Interaction already finished, could not send error message to Discord.")
 
 # --- スラッシュコマンド定義 ---
 
