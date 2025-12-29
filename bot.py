@@ -7,6 +7,7 @@ from groq import Groq
 import requests
 import random
 import math
+import httpx
 from pydub import AudioSegment
 from flask import Flask
 from threading import Thread
@@ -47,7 +48,7 @@ bot = MyBot()
 
 # --- 共通の対話ロジック ---
 async def process_voice_interaction(interaction: discord.Interaction, user_text: str):
-    # 1. Groq AIで返答生成
+    # 1. Groq AIで返答生成 (省略せずそのまま維持)
     try:
         chat_completion = client.chat.completions.create(
             messages=[
@@ -68,30 +69,36 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
 
     if voice_client and voice_client.is_connected():
         try:
-            # 1. レシピ作成 (audio_query)
-            params = {'text': response_text, 'speaker': HANAMARU_ID}
-            res1 = requests.post(f'{VOICEVOX_URL}/audio_query', params=params, timeout=5)
-            res1.raise_for_status()
-            query_data = res1.json()
+            # 非同期で通信するための「窓口」を作るまる
+            async with httpx.AsyncClient() as httpx_client:
+                # 1. レシピ作成 (audio_query)
+                res1 = await httpx_client.post(
+                    f'{VOICEVOX_URL}/audio_query', 
+                    params={'text': response_text, 'speaker': HANAMARU_ID}, 
+                    timeout=10.0
+                )
+                res1.raise_for_status()
+                query_data = res1.json()
 
-            # 2. 音声波形生成 (synthesis)
-            res2 = requests.post(
-                f'{VOICEVOX_URL}/synthesis',
-                params={'speaker': HANAMARU_ID},
-                json=query_data,
-                timeout=30
-            )
-            res2.raise_for_status()
-            
-            # 3. 保存
-            with open("response.wav", "wb") as f:
-                f.write(res2.content)
+                # 2. 音声波形生成 (synthesis) - ここでBotを止めずに待つまる！
+                res2 = await httpx_client.post(
+                    f'{VOICEVOX_URL}/synthesis',
+                    params={'speaker': HANAMARU_ID},
+                    json=query_data,
+                    timeout=60.0  # 長い文章でも大丈夫なように60秒待つまる
+                )
+                res2.raise_for_status()
+                
+                # 3. 保存
+                with open("response.wav", "wb") as f:
+                    f.write(res2.content)
             
             # 4. 再生
             ffmpeg_options = {
                 'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
                 'options': '-vn'
             }
+            # 再生開始
             voice_client.play(discord.FFmpegPCMAudio("response.wav", **ffmpeg_options))
             voice_success = True
 
