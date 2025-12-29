@@ -67,41 +67,48 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
         await interaction.followup.send("済まない。AIが会話を行うことができないようだ。")
         return
 
-# 2. VOICEVOXでの音声合成
+    # 2. VOICEVOXでの音声合成
     voice_success = False
-    voice_client = interaction.guild.voice_client
+    
+    # 【修正点】接続チェックを待たずに、まず音声合成を開始して時間を稼ぐ
+    try:
+        async with httpx.AsyncClient() as httpx_client:
+            # 1. レシピ作成
+            res1 = await httpx_client.post(
+                f'{VOICEVOX_URL}/audio_query', 
+                params={'text': response_text, 'speaker': HANAMARU_ID}, 
+                timeout=15.0
+            )
+            res1.raise_for_status()
+            query_data = res1.json()
 
-    # 接続されているかチェック
-    if voice_client and voice_client.is_connected():
-        try:
-            # 1回目でも動くように、VOICEVOXに注文する前に「自分が準備OKか」だけ確認
-            # 無理なループ待機はやめて、一瞬だけ間を置く
-            await asyncio.sleep(0.5)
-
-            async with httpx.AsyncClient() as httpx_client:
-                # 1. レシピ作成
-                res1 = await httpx_client.post(
-                    f'{VOICEVOX_URL}/audio_query', 
-                    params={'text': response_text, 'speaker': HANAMARU_ID}, 
-                    timeout=15.0
-                )
-                res1.raise_for_status()
-                query_data = res1.json()
-
-                # 2. 音声波形生成
-                res2 = await httpx_client.post(
-                    f'{VOICEVOX_URL}/synthesis',
-                    params={'speaker': HANAMARU_ID},
-                    json=query_data,
-                    timeout=60.0
-                )
-                res2.raise_for_status()
-                
-                with open("response.wav", "wb") as f:
-                    f.write(res2.content)
+            # 2. 音声波形生成
+            res2 = await httpx_client.post(
+                f'{VOICEVOX_URL}/synthesis',
+                params={'speaker': HANAMARU_ID},
+                json=query_data,
+                timeout=60.0
+            )
+            res2.raise_for_status()
             
-            # 再生直前の短い待機
-            await asyncio.sleep(0.5) 
+            # 3. ファイル保存
+            with open("response.wav", "wb") as f:
+                f.write(res2.content)
+
+        # 【修正点】再生直前に最新のボイスクライアント状態を取得する
+        voice_client = interaction.guild.voice_client
+
+        if voice_client:
+            # 1回目対策：接続直後の不安定な時間を回避するため、ここで少し待機する
+            if not voice_client.is_connected():
+                # まだ接続中（Connecting）なら、最大3秒だけ待つ
+                for _ in range(30):
+                    if voice_client.is_connected():
+                        break
+                    await asyncio.sleep(0.1)
+            
+            # 接続確認後、さらに念のため再生準備時間を置く
+            await asyncio.sleep(1.0)
             
             ffmpeg_options = {'options': '-vn'}
             if voice_client.is_playing():
@@ -109,19 +116,20 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
             
             voice_client.play(discord.FFmpegPCMAudio("response.wav", **ffmpeg_options))
             voice_success = True
+        else:
+            print("Voice Error: voice_client is None. Did you run /start?")
 
-        except Exception as e:
-            print(f"--- VOICE ERROR LOG ---")
-            print(f"Error: {e}")
+    except Exception as e:
+        print(f"--- VOICE ERROR LOG ---")
+        print(f"Error: {e}")
 
     # 3. お返事
     if voice_success:
         await interaction.followup.send(f"**花丸**: {response_text}")
     else:
-        # 声が出なかった原因をログに出すようにした
-        print("Voice success was False. Check if voice_client was None or connection failed.")
+        # エラー時のログ出力
+        print(f"Final voice_success is False. voice_client exists: {voice_client is not None}")
         await interaction.followup.send(f"（声が届かないようだ。済まないが、今は文字で伝えさせてほしい。）\n**花丸**: {response_text}")
-
 # --- スラッシュコマンド定義 ---
 
 # 5. ヘルプコマンド
@@ -256,36 +264,6 @@ async def kazu(interaction: discord.Interaction):
         comment = ""
 
     await interaction.response.send_message(f"{display}\n{comment}")
-
-# 【テスト用】kazuコマンドの全演出を確認するコマンド
-@bot.tree.command(name="kazu_test", description="演出のテスト表示をする")
-async def kazu_test(interaction: discord.Interaction):
-    test_cases = [
-        (1/100, "百分の1"),
-        (1/1000, "千分の1"),
-        (1/10000, "一万分の1"),
-        (1/100000, "十万分の1"),
-        (1/1000000, "百万分の1")
-    ]
-    
-    dummy_results = [250, 5000, 800000, 1500000000, 999999999999999]
-    responses = []
-
-    for i, (prob, label) in enumerate(test_cases):
-        f_num = f"{dummy_results[i]:,}"
-        
-        if prob <= 1/10000:
-            display = f"# {f_num}"
-        elif prob <= 1/1000:
-            display = f"## {f_num}"
-        elif prob <= 1/100:
-            display = f"**{f_num}**"
-        else:
-            display = f_num
-
-        responses.append(f"【{label}】\n{display}")
-
-    await interaction.response.send_message("\n\n".join(responses))
 
 # --- 起動 ---
 if __name__ == "__main__":
