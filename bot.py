@@ -249,6 +249,52 @@ async def kazu(interaction: discord.Interaction):
 
     await interaction.response.send_message(f"{display_text}\n{comment}")
 
+    # 【テスト用】kazuコマンドの全演出を確認するコマンド
+@bot.tree.command(name="kazu_test", description="kazuコマンドの各レア演出を順番にテスト表示するまる！")
+async def kazu_test(interaction: discord.Interaction):
+    # テストしたい確率のリスト（100分の1 〜 100万分の1以下）
+    # 判定ロジックが「以下(<=)」なので、境界値ピッタリでテストします
+    test_cases = [
+        (1/100, "100分の1演出（太字）"),
+        (1/1000, "1,000分の1演出（中見出し）"),
+        (1/10000, "10,000分の1演出（大見出し）"),
+        (1/100000, "100,000分の1演出（大見出し＋枠）"),
+        (1/1000000, "1,000,000分の1演出（大見出し＋二重枠）")
+    ]
+    
+    # 実際の数値をシミュレート（nを逆算して、それっぽい桁数の数字を作る）
+    # 例: 100万分の1は 0.95^n ≒ 1/1,000,000 => n ≒ 270回ループ相当
+    dummy_results = [250, 5000, 800000, 1500000000, 999999999999999]
+
+    responses = []
+    for i, (prob, label) in enumerate(test_cases):
+        formatted_num = f"{dummy_results[i]:,}"
+        num_len = len(formatted_num)
+        
+        # --- ここから kazu コマンドの表示ロジックを再現 ---
+        if prob <= 1/1000000:
+            top = "╔" + "═" * (num_len + 2) + "╗"
+            mid = "║ " + formatted_num + " ║"
+            bottom = "╚" + "═" * (num_len + 2) + "╝"
+            display = f"# {top}\n# {mid}\n# {bottom}"
+        elif prob <= 1/100000:
+            top = "┌" + "─" * (num_len + 2) + "┐"
+            mid = "│ " + formatted_num + " │"
+            bottom = "└" + "─" * (num_len + 2) + "┘"
+            display = f"# {top}\n# {mid}\n# {bottom}"
+        elif prob <= 1/10000:
+            display = f"# {formatted_num}"
+        elif prob <= 1/1000:
+            display = f"## {formatted_num}"
+        elif prob <= 1/100:
+            display = f"**{formatted_num}**"
+        # --- 再現ここまで ---
+
+        responses.append(f"【{label}のテスト】\n{display}")
+
+    # まとめて送信
+    await interaction.response.send_message("\n\n".join(responses))
+
 # --- 起動 ---
 if __name__ == "__main__":
     keep_alive()
