@@ -67,7 +67,7 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
         await interaction.followup.send("AIがお喋りをお休みしてるみたいだもん...。")
         return
 
-    # 2. VOICEVOXでの音声合成
+# 2. VOICEVOXでの音声合成
     voice_success = False
     voice_client = interaction.guild.voice_client
 
@@ -100,23 +100,22 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
             # 書き出し完了を待機
             await asyncio.sleep(1) 
             
-            # 4. 再生
-            ffmpeg_options = {
-                'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-                'options': '-vn'
-            }
+            # 4. 再生（シンプルな設定に変更したまる！）
+            ffmpeg_options = {'options': '-vn'}
+            
             if voice_client.is_playing():
                 voice_client.stop()
             
+            # 再生実行
             voice_client.play(discord.FFmpegPCMAudio("response.wav", **ffmpeg_options))
             voice_success = True
 
         except Exception as e:
-            # ★ここが抜けていたまる！エラーをログに出す大事な部分だもん
+            # ここで音声合成や再生のエラーをまとめてキャッチするまる
             print(f"--- VOICE ERROR LOG ---")
             print(f"Error: {e}")
 
-    # 3. お返事
+    # 3. お返事（voice_client の if の外に出すのがポイントだまる）
     if voice_success:
         await interaction.followup.send(f"**花丸**: {response_text}")
     else:
