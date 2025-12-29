@@ -67,66 +67,68 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
         await interaction.followup.send("済まない。AIが会話を行うことができないようだ。")
         return
 
-    # 読み上げる文章を作成（ユーザーの言葉 + 間を置くための読点 + ネアーノの返答）
-    # ユーザー名を取得して「〇〇、(内容)。ネアーノ、(内容)」という形にします
+    # 読み上げ文章の作成
     user_name = interaction.user.display_name
     combined_text = f"{user_name}、「{user_text}」。……ネアーノ、「{response_text}」"
+    display_message = f"**{user_name}**: {user_text}\n**ネアーノ**: {response_text}"
 
     # 2. VOICEVOXでの音声合成
     voice_success = False
     try:
-        async with httpx.AsyncClient() as httpx_client:
-            # 結合した文章をVOICEVOXに送る
+        # 接続が長時間ブロックされるのを防ぐため、タイムアウトをしっかり設定
+        async with httpx.AsyncClient(timeout=httpx.Timeout(60.0)) as httpx_client:
+            # 音声クエリ作成
             res1 = await httpx_client.post(
                 f'{VOICEVOX_URL}/audio_query', 
-                params={'text': combined_text, 'speaker': HANAMARU_ID}, 
-                timeout=15.0
+                params={'text': combined_text, 'speaker': HANAMARU_ID}
             )
             res1.raise_for_status()
             query_data = res1.json()
 
+            # 音声波形生成
             res2 = await httpx_client.post(
                 f'{VOICEVOX_URL}/synthesis',
                 params={'speaker': HANAMARU_ID},
-                json=query_data,
-                timeout=60.0
+                json=query_data
             )
             res2.raise_for_status()
             
+            # ファイル書き込みも非同期的に行うのが理想ですが、まずは確実に保存
             with open("response.wav", "wb") as f:
                 f.write(res2.content)
 
-        # 音声生成後、最新のvoice_clientを取得
+        # ボイスクライアントの状態を確認
         voice_client = interaction.guild.voice_client
 
         if voice_client:
-            # 接続待機
+            # 1回目対策：接続完了を待つ
             count = 0
-            while not voice_client.is_connected() and count < 100:
+            while not voice_client.is_connected() and count < 60:
                 await asyncio.sleep(0.1)
                 count += 1
             
-            await asyncio.sleep(1.5)
-            
-            ffmpeg_options = {'options': '-vn'}
-            if voice_client.is_playing():
-                voice_client.stop()
-            
-            voice_client.play(discord.FFmpegPCMAudio("response.wav", **ffmpeg_options))
-            voice_success = True
+            # 接続が確認できたら再生
+            if voice_client.is_connected():
+                # FFmpegの呼び出し前に一息つく
+                await asyncio.sleep(1.0)
+                
+                ffmpeg_options = {'options': '-vn'}
+                if voice_client.is_playing():
+                    voice_client.stop()
+                
+                # 再生
+                voice_client.play(discord.FFmpegPCMAudio("response.wav", **ffmpeg_options))
+                voice_success = True
 
     except Exception as e:
         print(f"--- VOICE ERROR LOG ---")
         print(f"Error: {e}")
 
-    # 3. お返事（Discord上での表示）
-    # 例のような形式で表示されるように変更しました
-    display_message = f"**{user_name}**: {user_text}\n**ネアーノ**: {response_text}"
-    
+    # 3. お返事
     if voice_success:
         await interaction.followup.send(display_message)
     else:
-        await interaction.followup.send(f"（声が届かないようだ。文字で失礼する。）\n{display_message}")
+        await interaction.followup.send(f"（声の準備が間に合わなかった。済まないが、文字で読んでほしい。）\n{display_message}")
 
 # --- スラッシュコマンド定義 ---
 
