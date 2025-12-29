@@ -287,5 +287,11 @@ async def kazu_test(interaction: discord.Interaction):
 
 # --- 起動 ---
 if __name__ == "__main__":
+    # Flaskを先に確実に起動する
     keep_alive()
-    bot.run(DISCORD_TOKEN)
+    
+    # Discord Tokenがない場合にエラーで止まらないようチェックを入れるとより親切です
+    if not DISCORD_TOKEN:
+        print("Error: DISCORD_TOKEN is not set.")
+    else:
+        bot.run(DISCORD_TOKEN)
