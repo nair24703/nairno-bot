@@ -70,8 +70,8 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
     # 2. VOICEVOXでの音声合成
     voice_success = False
     
-    # 【修正点】接続チェックを待たずに、まず音声合成を開始して時間を稼ぐ
     try:
+        # 音声合成を先に開始して、Discordの接続が安定する時間を稼ぐ
         async with httpx.AsyncClient() as httpx_client:
             # 1. レシピ作成
             res1 = await httpx_client.post(
@@ -95,19 +95,11 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
             with open("response.wav", "wb") as f:
                 f.write(res2.content)
 
-        # 【修正点】再生直前に最新のボイスクライアント状態を取得する
+        # 音声ファイル作成後にボイスクライアントを取得
         voice_client = interaction.guild.voice_client
 
-        if voice_client:
-            # 1回目対策：接続直後の不安定な時間を回避するため、ここで少し待機する
-            if not voice_client.is_connected():
-                # まだ接続中（Connecting）なら、最大3秒だけ待つ
-                for _ in range(30):
-                    if voice_client.is_connected():
-                        break
-                    await asyncio.sleep(0.1)
-            
-            # 接続確認後、さらに念のため再生準備時間を置く
+        if voice_client and voice_client.is_connected():
+            # 再生直前の短い待機（Discord側のバッファ準備待ち）
             await asyncio.sleep(1.0)
             
             ffmpeg_options = {'options': '-vn'}
@@ -117,7 +109,7 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
             voice_client.play(discord.FFmpegPCMAudio("response.wav", **ffmpeg_options))
             voice_success = True
         else:
-            print("Voice Error: voice_client is None. Did you run /start?")
+            print("Voice Error: voice_client is not connected.")
 
     except Exception as e:
         print(f"--- VOICE ERROR LOG ---")
@@ -125,11 +117,12 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
 
     # 3. お返事
     if voice_success:
-        await interaction.followup.send(f"**花丸**: {response_text}")
+        await interaction.followup.send(f"**縁壱風**: {response_text}")
     else:
-        # エラー時のログ出力
-        print(f"Final voice_success is False. voice_client exists: {voice_client is not None}")
-        await interaction.followup.send(f"（声が届かないようだ。済まないが、今は文字で伝えさせてほしい。）\n**花丸**: {response_text}")
+        # エラーログ出力時の変数未定義を回避
+        print(f"Final voice_success is False.")
+        await interaction.followup.send(f"（声が届かないようだ。済まないが、今は文字で伝えさせてほしい。）\n**縁壱風**: {response_text}")
+
 # --- スラッシュコマンド定義 ---
 
 # 5. ヘルプコマンド
