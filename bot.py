@@ -71,9 +71,8 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
     voice_success = False
     
     try:
-        # 音声合成を先に開始して、Discordの接続が安定する時間を稼ぐ
+        # 【重要】1回目でも処理を進めるため、VOICEVOXの生成を先に行う
         async with httpx.AsyncClient() as httpx_client:
-            # 1. レシピ作成
             res1 = await httpx_client.post(
                 f'{VOICEVOX_URL}/audio_query', 
                 params={'text': response_text, 'speaker': HANAMARU_ID}, 
@@ -82,7 +81,6 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
             res1.raise_for_status()
             query_data = res1.json()
 
-            # 2. 音声波形生成
             res2 = await httpx_client.post(
                 f'{VOICEVOX_URL}/synthesis',
                 params={'speaker': HANAMARU_ID},
@@ -91,25 +89,34 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
             )
             res2.raise_for_status()
             
-            # 3. ファイル保存
             with open("response.wav", "wb") as f:
                 f.write(res2.content)
 
-        # 音声ファイル作成後にボイスクライアントを取得
+        # 音声ができた後で、最新のボイスクライアントを再取得する
+        # interaction.guild.voice_client を毎回取得するのがポイント
         voice_client = interaction.guild.voice_client
 
-        if voice_client and voice_client.is_connected():
-            # 再生直前の短い待機（Discord側のバッファ準備待ち）
+        if voice_client:
+            # もし接続がまだ完了（Handshake中）なら、最大5秒待機する
+            # これにより1回目でも判定落ちしなくなる
+            count = 0
+            while not voice_client.is_connected() and count < 50:
+                await asyncio.sleep(0.1)
+                count += 1
+            
+            # 接続確認後、さらに念のため再生準備時間を置く
             await asyncio.sleep(1.0)
             
             ffmpeg_options = {'options': '-vn'}
             if voice_client.is_playing():
                 voice_client.stop()
             
-            voice_client.play(discord.FFmpegPCMAudio("response.wav", **ffmpeg_options))
+            # 再生実行
+            source = discord.FFmpegPCMAudio("response.wav", **ffmpeg_options)
+            voice_client.play(source)
             voice_success = True
         else:
-            print("Voice Error: voice_client is not connected.")
+            print("Voice Error: voice_client is None. Check /start status.")
 
     except Exception as e:
         print(f"--- VOICE ERROR LOG ---")
@@ -119,9 +126,9 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
     if voice_success:
         await interaction.followup.send(f"**ネアーノ**: {response_text}")
     else:
-        # エラーログ出力時の変数未定義を回避
-        print(f"Final voice_success is False.")
+        print("Final voice_success is False.")
         await interaction.followup.send(f"（声が届かないようだ。済まないが、今は文字で伝えさせてほしい。）\n**ネアーノ**: {response_text}")
+
 # --- スラッシュコマンド定義 ---
 
 # 5. ヘルプコマンド
