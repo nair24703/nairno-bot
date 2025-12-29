@@ -69,9 +69,7 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
 
     # 2. VOICEVOXでの音声合成
     voice_success = False
-    
     try:
-        # 【重要】1回目でも処理を進めるため、VOICEVOXの生成を先に行う
         async with httpx.AsyncClient() as httpx_client:
             res1 = await httpx_client.post(
                 f'{VOICEVOX_URL}/audio_query', 
@@ -92,31 +90,25 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
             with open("response.wav", "wb") as f:
                 f.write(res2.content)
 
-        # 音声ができた後で、最新のボイスクライアントを再取得する
-        # interaction.guild.voice_client を毎回取得するのがポイント
+        # 音声生成後、改めて最新のvoice_clientを取得
         voice_client = interaction.guild.voice_client
 
         if voice_client:
-            # もし接続がまだ完了（Handshake中）なら、最大5秒待機する
-            # これにより1回目でも判定落ちしなくなる
+            # 接続が確立されるまで最大10秒待機（1回目対策の強化）
             count = 0
-            while not voice_client.is_connected() and count < 50:
+            while not voice_client.is_connected() and count < 100:
                 await asyncio.sleep(0.1)
                 count += 1
             
-            # 接続確認後、さらに念のため再生準備時間を置く
-            await asyncio.sleep(1.0)
+            # 接続確認後、再生準備のために1.5秒待機
+            await asyncio.sleep(1.5)
             
             ffmpeg_options = {'options': '-vn'}
             if voice_client.is_playing():
                 voice_client.stop()
             
-            # 再生実行
-            source = discord.FFmpegPCMAudio("response.wav", **ffmpeg_options)
-            voice_client.play(source)
+            voice_client.play(discord.FFmpegPCMAudio("response.wav", **ffmpeg_options))
             voice_success = True
-        else:
-            print("Voice Error: voice_client is None. Check /start status.")
 
     except Exception as e:
         print(f"--- VOICE ERROR LOG ---")
@@ -126,7 +118,6 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
     if voice_success:
         await interaction.followup.send(f"**ネアーノ**: {response_text}")
     else:
-        print("Final voice_success is False.")
         await interaction.followup.send(f"（声が届かないようだ。済まないが、今は文字で伝えさせてほしい。）\n**ネアーノ**: {response_text}")
 
 # --- スラッシュコマンド定義 ---
@@ -153,18 +144,17 @@ async def help_command(interaction: discord.Interaction):
 @bot.tree.command(name="start", description="VCに接続する")
 async def start(interaction: discord.Interaction):
     if interaction.user.voice:
-        # 先に応答を保留（defer）またはメッセージを送信する
-        await interaction.response.send_message("接続を開始する。少々待っていてくれ。")
+        # 先に応答を返し、タイムアウトを防ぐ
+        await interaction.response.send_message("これより接続を試みる。少々待っていてくれ。")
         
         channel = interaction.user.voice.channel
         try:
-            # その後で接続処理を行う
-            await channel.connect()
-            # 完了したらメッセージを編集（または追記）する
-            await interaction.edit_original_response(content=f"{channel.name} に接続した。私に何か用があれば、いつでも話しかけてほしい。")
+            # timeoutを60秒に延長し、self_deaf(スピーカーミュート)を有効にして負荷を軽減する
+            await channel.connect(timeout=60.0, self_deaf=True)
+            await interaction.edit_original_response(content=f"{channel.name} に接続した。私に用があれば、いつでも話しかけてほしい。")
         except Exception as e:
             print(f"Connect Error: {e}")
-            await interaction.edit_original_response(content="済まない、接続に失敗してしまった。")
+            await interaction.edit_original_response(content="済まない、接続が時間切れとなってしまった。もう一度試してみてくれないか。")
     else:
         await interaction.response.send_message("まずはボイスチャンネルに入ってくれないだろうか。")
 
