@@ -71,27 +71,19 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
     voice_success = False
     voice_client = interaction.guild.voice_client
 
-    if voice_client:
-        # --- ここから修正だもん！ ---
-        # 1回目はまだ「声を通す準備」ができていないことがあるから、
-        # 接続が完全に安定（is_connected）するまで、最大3秒だけ待機するまる
-        for _ in range(30):
-            if voice_client.is_connected():
-                break
-            await asyncio.sleep(0.1)
-        
-        # 接続直後の「無音の時間」を埋めるために、さらに少しだけ待つのがコツだもん！
-        await asyncio.sleep(1.0) 
-        # --- ここまで修正だまる ---
-
+    # 接続されているかチェック
+    if voice_client and voice_client.is_connected():
         try:
-            # VOICEVOXとの通信開始だもん！
+            # 1回目でも動くように、VOICEVOXに注文する前に「自分が準備OKか」だけ確認
+            # 無理なループ待機はやめて、一瞬だけ間を置くまる
+            await asyncio.sleep(0.5)
+
             async with httpx.AsyncClient() as httpx_client:
                 # 1. レシピ作成
                 res1 = await httpx_client.post(
                     f'{VOICEVOX_URL}/audio_query', 
                     params={'text': response_text, 'speaker': HANAMARU_ID}, 
-                    timeout=10.0
+                    timeout=15.0 # 少し余裕を持たせるまる
                 )
                 res1.raise_for_status()
                 query_data = res1.json()
@@ -105,14 +97,12 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
                 )
                 res2.raise_for_status()
                 
-                # 3. 保存
                 with open("response.wav", "wb") as f:
                     f.write(res2.content)
             
-            # 書き出し完了を待機
-            await asyncio.sleep(0.5) # ここも少し短くしてサクサク動かすまる！
+            # 再生直前の短い待機（これが1回目対策だもん！）
+            await asyncio.sleep(0.5) 
             
-            # 4. 再生
             ffmpeg_options = {'options': '-vn'}
             if voice_client.is_playing():
                 voice_client.stop()
