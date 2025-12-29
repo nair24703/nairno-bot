@@ -3,7 +3,7 @@ FROM voicevox/voicevox_engine:cpu-ubuntu22.04-latest
 
 USER root
 
-# 2. 必要なツールをインストール（libopus-dev を追加！）
+# 2. 必要なツールをインストール
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
     ffmpeg \
@@ -20,7 +20,7 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# 4. 起動スクリプト（エラーの原因だったオプションを消したまる！）
+# 4. 起動スクリプト
 RUN echo '#!/bin/bash\n\
 echo "--- STARTING VOICEVOX ENGINE ---" \n\
 /opt/voicevox_engine/run --host 0.0.0.0 & \n\
