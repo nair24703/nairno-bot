@@ -154,9 +154,18 @@ async def help_command(interaction: discord.Interaction):
 @bot.tree.command(name="start", description="VCに接続する")
 async def start(interaction: discord.Interaction):
     if interaction.user.voice:
+        # 先に応答を保留（defer）またはメッセージを送信する
+        await interaction.response.send_message("接続を開始する。少々待っていてくれ。")
+        
         channel = interaction.user.voice.channel
-        await channel.connect()
-        await interaction.response.send_message(f"{channel.name} に接続した。私に何か用があれば、いつでも話しかけてほしい。")
+        try:
+            # その後で接続処理を行う
+            await channel.connect()
+            # 完了したらメッセージを編集（または追記）する
+            await interaction.edit_original_response(content=f"{channel.name} に接続した。私に何か用があれば、いつでも話しかけてほしい。")
+        except Exception as e:
+            print(f"Connect Error: {e}")
+            await interaction.edit_original_response(content="済まない、接続に失敗してしまった。")
     else:
         await interaction.response.send_message("まずはボイスチャンネルに入ってくれないだろうか。")
 
