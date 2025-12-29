@@ -53,9 +53,7 @@ bot = MyBot()
 # --- 共通の対話ロジック ---
 async def process_voice_interaction(interaction: discord.Interaction, user_text: str):
     step = "開始"
-    # デバッグログをより目立つように変更
     print(f"\n===== [TALK START] =====")
-    print(f"STEP: {step} / INPUT: {user_text}")
     
     user_name = interaction.user.display_name
     display_message = ""
@@ -63,79 +61,77 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
     try:
         # 1. Groq AIで返答生成
         step = "Groq AI呼び出し"
-        chat_completion = client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": "アニメ「鬼滅の刃」に出てくる継国縁壱のような、極めて穏やかで、謙虚かつ淡々とした口調にしてください。しかし敬語は使わないでください。"},
-                {"role": "user", "content": user_text}
-            ],
-            model="llama-3.1-8b-instant",
-        )
-        response_text = chat_completion.choices[0].message.content
-        print(f"STEP: AI返答成功 / TEXT: {response_text}")
+        # AI生成を別スレッドで実行してブロッキングを回避
+        def get_ai_response():
+            return client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": "アニメ「鬼滅の刃」に出てくる継国縁壱のような、極めて穏やかで、謙虚かつ淡々とした口調にしてください。しかし敬語は使わないでください。"},
+                    {"role": "user", "content": user_text}
+                ],
+                model="llama-3.1-8b-instant",
+            ).choices[0].message.content
 
-        # 読み上げテキストを結合
+        response_text = await asyncio.to_thread(get_ai_response)
+        
         combined_text = f"{user_name}、{user_text}。ネアーノ、{response_text}"
         display_message = f"**{user_name}**: {user_text}\n**ネアーノ**: {response_text}"
 
         # 2. VOICEVOXでの音声合成
         voice_success = False
         
-        step = "VOICEVOXリクエスト開始"
-        # タイムアウトを120秒に延長し、サーバー切断に備える
-        async with httpx.AsyncClient(timeout=httpx.Timeout(120.0)) as httpx_client:
-            # クエリ作成
-            step = "VOICEVOXクエリ作成"
-            res1 = await httpx_client.post(
-                f'{VOICEVOX_URL}/audio_query', 
-                params={'text': combined_text, 'speaker': HANAMARU_ID}
-            )
-            res1.raise_for_status()
-            query_data = res1.json()
+        # HTTPリクエスト関数を定義
+        async def fetch_voice():
+            async with httpx.AsyncClient(timeout=httpx.Timeout(120.0)) as httpx_client:
+                # クエリ作成
+                res1 = await httpx_client.post(
+                    f'{VOICEVOX_URL}/audio_query', 
+                    params={'text': combined_text, 'speaker': HANAMARU_ID}
+                )
+                res1.raise_for_status()
+                query_data = res1.json()
 
-            # 音声合成 (ここが一番重い)
-            step = "VOICEVOX音声合成"
-            print("INFO: 音声合成中... (時間がかかる場合があります)")
-            res2 = await httpx_client.post(
-                f'{VOICEVOX_URL}/synthesis',
-                params={'speaker': HANAMARU_ID},
-                json=query_data
-            )
-            res2.raise_for_status()
-            
-            step = "ファイル保存"
-            with open("response.wav", "wb") as f:
-                f.write(res2.content)
-            print("INFO: 音声ファイル保存完了")
+                # 音声合成 (synthesis)
+                res2 = await httpx_client.post(
+                    f'{VOICEVOX_URL}/synthesis',
+                    params={'speaker': HANAMARU_ID},
+                    json=query_data
+                )
+                res2.raise_for_status()
+                return res2.content
+
+        step = "VOICEVOX音声合成"
+        print("INFO: 音声合成を開始します...")
+        # 音声合成を待機している間も、Discordの通信（ハートビート）を維持する
+        voice_data = await fetch_voice()
+        
+        step = "ファイル保存"
+        with open("response.wav", "wb") as f:
+            f.write(voice_data)
 
         # 3. 再生処理
         step = "ボイスクライアント確認"
-        # 最新のクライアントを再取得
         voice_client = interaction.guild.voice_client
 
         if voice_client:
             step = "VC接続待ち"
-            # 接続が切れていたら再接続を待つ
-            for i in range(100):
+            # 接続が不安定な場合のために再確認
+            for i in range(50):
                 if voice_client.is_connected():
                     break
                 await asyncio.sleep(0.1)
             
             if voice_client.is_connected():
                 step = "再生実行"
-                # FFmpegの起動を確実にするための待機
-                await asyncio.sleep(1.5)
+                await asyncio.sleep(1.0) # バッファ時間を少し確保
                 
-                ffmpeg_options = {'options': '-vn'}
                 if voice_client.is_playing():
                     voice_client.stop()
                 
-                voice_client.play(discord.FFmpegPCMAudio("response.wav", **ffmpeg_options))
-                print("INFO: 再生を開始しました")
+                # FFmpegを実行
+                voice_client.play(discord.FFmpegPCMAudio("response.wav", options='-vn'))
                 voice_success = True
             else:
                 print("ERROR: VC接続がタイムアウトしました")
-        else:
-            print("ERROR: voice_clientが見つかりません")
 
         # 4. メッセージ送信
         if voice_success:
@@ -146,11 +142,10 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
     except Exception as e:
         error_msg = f"!!! [CRITICAL ERROR] 段階: {step} / 内容: {str(e)}"
         print(error_msg)
-        # エラー表示の修正 (responses -> response)
         try:
             await interaction.followup.send(f"（不具合が生じた。段階: {step}）\n{display_message if display_message else ''}")
         except:
-            print("Could not send error message to Discord.")
+            pass
     
     print(f"===== [TALK END] =====\n")
 
