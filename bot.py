@@ -72,6 +72,9 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
     voice_client = interaction.guild.voice_client
 
     if voice_client and voice_client.is_connected():
+        while not voice_client.is_ready():
+            await asyncio.sleep(0.1)
+        
         try:
             # 非同期で通信するための窓口
             async with httpx.AsyncClient() as httpx_client:
