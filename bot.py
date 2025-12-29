@@ -205,6 +205,7 @@ async def omikuji(interaction: discord.Interaction):
 @bot.tree.command(name="kazu", description="より低い確率で大きい数が出るまる！運試しにどうぞ！")
 async def kazu(interaction: discord.Interaction):
     n = 0
+    # 継続確率 95%
     while random.random() < 0.95:
         n += 1
 
@@ -212,53 +213,41 @@ async def kazu(interaction: discord.Interaction):
     variation_percent = random.randint(-100, 100)
     total_result = int(base_value + (base_value * (variation_percent / 100)))
 
+    # 確率計算
     prob = 0.95 ** n
-    formatted_num = f"{total_result:,}"
-    num_len = len(formatted_num) # 数字の文字数を取得（カンマ含む）
+    f_num = f"{total_result:,}"
     
+    # 演出の分岐：1/10,000以下はすべて最大サイズ（#）
     if prob <= 1/1000000:
-        # コードブロックを使うことで、全角記号と半角数字の幅を固定します
-        top = "╔" + "═" * (num_len + 2) + "╗"
-        mid = "║ " + formatted_num + " ║"
-        bottom = "╚" + "═" * (num_len + 2) + "╝"
-        # # の後に ``` を置くことで、大きく表示しつつ等幅にします
-        display_text = f"# ```\n{top}\n{mid}\n{bottom}\n```"
-        comment = "どんな卑怯なやり方をしたまる...？もうこれ以上の数は出ないまる...。宝くじ2等レベルの強運だもん！（1/1,000,000以下）"
-    
+        display = f"# {f_num}"
+        comment = f"どんな卑怯なやり方をしたまる...？もうこれ以上の数は出ないまる...。宝くじ2等レベルの強運だもん！（1/1,000,000以下）"
     elif prob <= 1/100000:
-        top = "┌" + "─" * (num_len + 2) + "┐"
-        mid = "│ " + formatted_num + " │"
-        bottom = "└" + "─" * (num_len + 2) + "┘"
-        display_text = f"# ```\n{top}\n{mid}\n{bottom}\n```"
-        comment = "あなたは一体何度このコマンドを使用したまる...？これは手術の全身麻酔事故で死亡する確率に相当するまる。（1/100,000以下）"
-    
+        display = f"# {f_num}"
+        comment = f"あなたは一体何度このコマンドを使用したまる...？これは手術の全身麻酔事故で死亡する確率に相当するまる。（1/100,000以下）"
     elif prob <= 1/10000:
-        display_text = f"# {formatted_num}"
-        comment = "どうやってここまでたどり着いたまる？恐ろしい強運だもん。これは一生涯に落雷に遭う確率に相当するまる！（1/10,000以下）"
-    
+        display = f"# {f_num}"
+        comment = f"どうやってここまでたどり着いたまる？恐ろしい強運だもん。これは一生涯に落雷に遭う確率に相当するまる！（1/10,000以下）"
     elif prob <= 1/1000:
-        display_text = f"## {formatted_num}"
-        comment = "すごすぎだもん！これは今日家を出たら事故に遭う確率に相当するまる。（1/1,000以下）"
-    
+        display = f"## {f_num}"
+        comment = f"すごすぎだもん！これは今日家を出たら事故に遭う確率に相当するまる。（1/1,000以下）"
     elif prob <= 1/100:
-        display_text = f"**{formatted_num}**"
-        comment = "100分の1を超えたまる！（1/100以下）"
-    
+        display = f"**{f_num}**"
+        comment = f"100分の1を超えたまる！（1/100以下）"
     else:
-        display_text = formatted_num
+        display = f_num
         comment = ""
 
-    await interaction.response.send_message(f"{display_text}\n{comment}")
+    await interaction.response.send_message(f"{display}\n{comment}")
 
 # 【テスト用】kazuコマンドの全演出を確認するコマンド
-@bot.tree.command(name="kazu_test", description="ライン演出のテスト表示をするまる！")
+@bot.tree.command(name="kazu_test", description="演出のテスト表示をするまる！")
 async def kazu_test(interaction: discord.Interaction):
     test_cases = [
         (1/100, "100分の1（太字）"),
         (1/1000, "1,000分の1（中見出し）"),
         (1/10000, "10,000分の1（大見出し）"),
-        (1/100000, "100,000分の1（大見出し＋ライン）"),
-        (1/1000000, "1,000,000分の1（大見出し＋二重ライン）")
+        (1/100000, "100,000分の1（大見出し：統一）"),
+        (1/1000000, "1,000,000分の1（大見出し：統一）")
     ]
     
     dummy_results = [250, 5000, 800000, 1500000000, 999999999999999]
@@ -266,20 +255,8 @@ async def kazu_test(interaction: discord.Interaction):
 
     for i, (prob, label) in enumerate(test_cases):
         f_num = f"{dummy_results[i]:,}"
-        num_len = len(f_num)
         
-        # ラインの長さを数字+4に設定
-        # ただし全角記号は幅が広いため、調整係数として0.7倍程度にしています
-        line_len = int((num_len + 4) * 0.7) 
-        if line_len < 4: line_len = 4 # 最低限の長さ
-
-        if prob <= 1/1000000:
-            line = "═" * line_len
-            display = f"# {line}\n#  {f_num} \n# {line}"
-        elif prob <= 1/100000:
-            line = "─" * line_len
-            display = f"# {line}\n#  {f_num} \n# {line}"
-        elif prob <= 1/10000:
+        if prob <= 1/10000: # 1万分の1以下はすべて同じ「#」
             display = f"# {f_num}"
         elif prob <= 1/1000:
             display = f"## {f_num}"
