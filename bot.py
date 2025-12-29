@@ -213,21 +213,41 @@ async def kazu(interaction: discord.Interaction):
     total_result = int(base_value + (base_value * (variation_percent / 100)))
 
     prob = 0.95 ** n
+    formatted_num = f"{total_result:,}"
+    num_len = len(formatted_num) # 数字の文字数を取得（カンマ含む）
     
-    if prob < 1/1000000:
-        comment = "どんな卑怯なやり方をしたまる...？もうこれ以上の数は出ないまる...。宝くじ2等レベルの強運だもん！（1/1000000以下）"
-    elif prob < 1/100000:
-        comment = "あなたは一体何度このコマンドを使用したまる...？これは手術の全身麻酔事故で死亡する確率に相当するまる。（1/100000以下）"
-    elif prob < 1/10000:
-        comment = "どうやってここまでたどり着いたまる？恐ろしい強運だもん。これは一生涯に落雷に遭う確率に相当するまる！（1/10000以下）"
-    elif prob < 1/1000:
-        comment = "すごすぎだもん！これは今日家を出たら事故に遭う確率に相当するまる。（1/1000以下）"
-    elif prob < 1/100:
-        comment = "100分の1を超えたまる！" 
+    if prob <= 1/1000000:
+        # 数字の長さに合わせて上下の棒を増やす
+        top = "╔" + "═" * (num_len + 2) + "╗"
+        mid = "║ " + formatted_num + " ║"
+        bottom = "╚" + "═" * (num_len + 2) + "╝"
+        display_text = f"# {top}\n# {mid}\n# {bottom}"
+        comment = "どんな卑怯なやり方をしたまる...？もうこれ以上の数は出ないまる...。宝くじ2等レベルの強運だもん！（1/1,000,000以下）"
+    
+    elif prob <= 1/100000:
+        top = "┌" + "─" * (num_len + 2) + "┐"
+        mid = "│ " + formatted_num + " │"
+        bottom = "└" + "─" * (num_len + 2) + "┘"
+        display_text = f"# {top}\n# {mid}\n# {bottom}"
+        comment = "あなたは一体何度このコマンドを使用したまる...？これは手術の全身麻酔事故で死亡する確率に相当するまる。（1/100,000以下）"
+    
+    elif prob <= 1/10000:
+        display_text = f"# {formatted_num}"
+        comment = "どうやってここまでたどり着いたまる？恐ろしい強運だもん。これは一生涯に落雷に遭う確率に相当するまる！（1/10,000以下）"
+    
+    elif prob <= 1/1000:
+        display_text = f"## {formatted_num}"
+        comment = "すごすぎだもん！これは今日家を出たら事故に遭う確率に相当するまる。（1/1,000以下）"
+    
+    elif prob <= 1/100:
+        display_text = f"**{formatted_num}**"
+        comment = "100分の1を超えたまる！（1/100以下）"
+    
     else:
+        display_text = formatted_num
         comment = ""
 
-    await interaction.response.send_message(f"**{total_result:,}**\n{comment}")
+    await interaction.response.send_message(f"{display_text}\n{comment}")
 
 # --- 起動 ---
 if __name__ == "__main__":
