@@ -67,13 +67,19 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
         await interaction.followup.send("済まない。AIが会話を行うことができないようだ。")
         return
 
+    # 読み上げる文章を作成（ユーザーの言葉 + 間を置くための読点 + ネアーノの返答）
+    # ユーザー名を取得して「〇〇、(内容)。ネアーノ、(内容)」という形にします
+    user_name = interaction.user.display_name
+    combined_text = f"{user_name}、「{user_text}」。……ネアーノ、「{response_text}」"
+
     # 2. VOICEVOXでの音声合成
     voice_success = False
     try:
         async with httpx.AsyncClient() as httpx_client:
+            # 結合した文章をVOICEVOXに送る
             res1 = await httpx_client.post(
                 f'{VOICEVOX_URL}/audio_query', 
-                params={'text': response_text, 'speaker': HANAMARU_ID}, 
+                params={'text': combined_text, 'speaker': HANAMARU_ID}, 
                 timeout=15.0
             )
             res1.raise_for_status()
@@ -90,17 +96,16 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
             with open("response.wav", "wb") as f:
                 f.write(res2.content)
 
-        # 音声生成後、改めて最新のvoice_clientを取得
+        # 音声生成後、最新のvoice_clientを取得
         voice_client = interaction.guild.voice_client
 
         if voice_client:
-            # 接続が確立されるまで最大10秒待機（1回目対策の強化）
+            # 接続待機
             count = 0
             while not voice_client.is_connected() and count < 100:
                 await asyncio.sleep(0.1)
                 count += 1
             
-            # 接続確認後、再生準備のために1.5秒待機
             await asyncio.sleep(1.5)
             
             ffmpeg_options = {'options': '-vn'}
@@ -114,11 +119,14 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
         print(f"--- VOICE ERROR LOG ---")
         print(f"Error: {e}")
 
-    # 3. お返事
+    # 3. お返事（Discord上での表示）
+    # 例のような形式で表示されるように変更しました
+    display_message = f"**{user_name}**: {user_text}\n**ネアーノ**: {response_text}"
+    
     if voice_success:
-        await interaction.followup.send(f"**ネアーノ**: {response_text}")
+        await interaction.followup.send(display_message)
     else:
-        await interaction.followup.send(f"（声が届かないようだ。済まないが、今は文字で伝えさせてほしい。）\n**ネアーノ**: {response_text}")
+        await interaction.followup.send(f"（声が届かないようだ。文字で失礼する。）\n{display_message}")
 
 # --- スラッシュコマンド定義 ---
 
