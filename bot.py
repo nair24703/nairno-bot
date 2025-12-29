@@ -67,18 +67,21 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
         await interaction.followup.send("AIがお喋りをお休みしてるみたいだもん...。")
         return
 
-    # 2. VOICEVOXでの音声合成
+# 2. VOICEVOXでの音声合成
     voice_success = False
     voice_client = interaction.guild.voice_client
 
     if voice_client:
-        counter = 0
-        while not voice_client.is_connected() and counter < 50:
-            await asyncio.sleep(0.1)
-            counter += 1
+        # もし接続したばかりで準備ができていない（ハンドシェイク中など）なら、少しだけ待つまる
+        # 1回目対策だもん！
+        if not voice_client.is_connected():
+            counter = 0
+            while not voice_client.is_connected() and counter < 30: # 最大3秒に短縮したまる
+                await asyncio.sleep(0.1)
+                counter += 1
 
         try:
-            # 非同期で通信するための窓口
+            # VOICEVOXとの通信開始だもん！
             async with httpx.AsyncClient() as httpx_client:
                 # 1. レシピ作成
                 res1 = await httpx_client.post(
@@ -103,27 +106,26 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
                     f.write(res2.content)
             
             # 書き出し完了を待機
-            await asyncio.sleep(1) 
+            await asyncio.sleep(0.5) # ここも少し短くしてサクサク動かすまる！
             
-            # 4. 再生（シンプルな設定に変更したまる！）
+            # 4. 再生
             ffmpeg_options = {'options': '-vn'}
-            
             if voice_client.is_playing():
                 voice_client.stop()
             
-            # 再生実行
             voice_client.play(discord.FFmpegPCMAudio("response.wav", **ffmpeg_options))
             voice_success = True
 
         except Exception as e:
-            # ここで音声合成や再生のエラーをまとめてキャッチするまる
             print(f"--- VOICE ERROR LOG ---")
             print(f"Error: {e}")
 
-    # 3. お返事（voice_client の if の外に出すのがポイントだまる）
+    # 3. お返事
     if voice_success:
         await interaction.followup.send(f"**花丸**: {response_text}")
     else:
+        # 声が出なかった原因をログに出すようにしたまる！
+        print("Voice success was False. Check if voice_client was None or connection failed.")
         await interaction.followup.send(f"（ごめんね、声が出ないから文字でお返事するまる！）\n**花丸**: {response_text}")
 
 # --- スラッシュコマンド定義 ---
