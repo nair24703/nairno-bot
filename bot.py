@@ -117,12 +117,11 @@ async def process_voice_interaction(interaction: discord.Interaction, user_text:
 
     # 3. お返事
     if voice_success:
-        await interaction.followup.send(f"**縁壱風**: {response_text}")
+        await interaction.followup.send(f"**ネアーノ**: {response_text}")
     else:
         # エラーログ出力時の変数未定義を回避
         print(f"Final voice_success is False.")
-        await interaction.followup.send(f"（声が届かないようだ。済まないが、今は文字で伝えさせてほしい。）\n**縁壱風**: {response_text}")
-
+        await interaction.followup.send(f"（声が届かないようだ。済まないが、今は文字で伝えさせてほしい。）\n**ネアーノ**: {response_text}")
 # --- スラッシュコマンド定義 ---
 
 # 5. ヘルプコマンド
@@ -134,7 +133,7 @@ async def help_command(interaction: discord.Interaction):
         color=discord.Color.pink()
     )
     embed.add_field(name="/start", value="ボイスチャンネルに接続する。声で会話したい場合はこちらを使おう。", inline=False)
-    embed.add_field(name="/talk [メッセージ]", value="満別花丸というキャラクターと会話する。VCに接続している場合は声で会話する。", inline=False)
+    embed.add_field(name="/talk [メッセージ]", value="ネアーノ（CV:満別花丸）と会話する。VCに接続している場合は声で会話する。", inline=False)
     embed.add_field(name="/stop", value="VCから切断する。", inline=False)
     embed.add_field(name="/kazu", value="より小さい確率で大きい数が出る。特に大きい数が出ると何かあるかも？", inline=False)
     embed.add_field(name="/omikuji", value="伏見稲荷大社風おみくじを引く。", inline=False)
@@ -170,7 +169,7 @@ async def stop(interaction: discord.Interaction):
     else:
         await interaction.response.send_message("今はどこにも繋がっていないようだ。")
 
-@bot.tree.command(name="talk", description="花丸と会話する")
+@bot.tree.command(name="talk", description="ネアーノと会話する")
 @app_commands.describe(message="話したい内容を入力してね")
 async def talk(interaction: discord.Interaction, message: str):
     await interaction.response.defer()
@@ -217,7 +216,6 @@ async def omikuji(interaction: discord.Interaction):
         print(f"Groq API Error: {e}")
         ai_advice = f"神様の導きが途切れてしまったようだ。だが、この「{result}」という運命を静かに受け止めてほしい。"
 
-    # 見た目も「AI」を消して、神社っぽくするまる！
     embed = discord.Embed(
         title="🦊 伏見稲荷大社・奉納おみくじ 🦊",
         description=f"あなたの運勢をお出しした。\n\n**【 運 勢 】**\n# {result}",
